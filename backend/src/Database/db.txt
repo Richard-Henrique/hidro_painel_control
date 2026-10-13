@@ -1,0 +1,627 @@
+/* =====================================================================
+   Nome do desenvolvedor: Richard Henrique
+   Data da criação: 10/10/2026
+   Descrição: Script de criação do banco de dados do HidroControl
+              (sistema de monitoramento de usina hidrelétrica).
+              Contém: criação do banco, procedures de CRUD (no topo),
+              tabelas (usinas, usuarios, turbinas, alertas), triggers
+              que mantêm a contagem de turbinas da usina, view do
+              histórico de alertas e a carga inicial da usina SENAI.
+
+   SGBD alvo: MySQL 8.0.16+ (Laragon) - necessário para os CHECKs.
+
+   Modelo (1 usina : N usuarios, 1 usina : N turbinas, 1 turbina : N alertas)
+
+        usinas 1 ────< usuarios
+          │
+          └────1 ────< turbinas 1 ────< alertas ──> vw_historico_alertas
+
+   IMPORTANTE: execute o script inteiro em um cliente que entenda o
+   comando DELIMITER (HeidiSQL, MySQL Workbench, DBeaver ou o cliente
+   mysql).
+   ===================================================================== */
+
+
+/* ---------------------------------------------------------------------
+   1) CRIAÇÃO E SELEÇÃO DO BANCO DE DADOS
+   --------------------------------------------------------------------- */
+
+-- Cria o banco somente se ele ainda não existir (permite reexecutar o script)
+-- utf8mb4 garante suporte a acentos e caracteres especiais
+CREATE DATABASE IF NOT EXISTS hidrocontrol
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
+
+-- Seleciona o banco recém-criado para que tudo abaixo seja criado dentro dele
+USE hidrocontrol;
+
+-- Garante que a conexão trate os textos (e mensagens de erro) em utf8mb4
+SET NAMES utf8mb4;
+
+
+/* ---------------------------------------------------------------------
+   2) PROCEDURES (as "funções" do CRUD)
+   --------------------------------------------------------------------- */
+
+-- Troca o delimitador para ";" poder ser usado dentro dos corpos das procedures
+DELIMITER $$
+
+-- ---------------------------------------------------------------------
+-- 2.1) Cadastrar turbina
+--      Recebe a usina, o nome, o modelo e a potência nominal. Os demais
+--      campos assumem o valor padrão da tabela: energia gerada 0,
+--      temperatura 0 e turbina desligada. Devolve o id da turbina criada.
+-- ---------------------------------------------------------------------
+
+-- Remove a procedure caso ela já exista, para permitir recriá-la
+DROP PROCEDURE IF EXISTS sp_cadastrar_turbina$$
+
+-- Declara a procedure com seus parâmetros de entrada
+CREATE PROCEDURE sp_cadastrar_turbina(
+    IN p_usina          INT,           -- id da usina dona da turbina
+    IN p_nome           VARCHAR(100),  -- nome da turbina
+    IN p_modelo         VARCHAR(100),  -- modelo (tipo) da turbina
+    IN p_energiaNominal INT            -- potência nominal da turbina
+)
+BEGIN
+    -- Valida o nome: não pode ser nulo nem composto só por espaços
+    IF p_nome IS NULL OR TRIM(p_nome) = '' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'O nome da turbina não pode ser vazio.';
+    END IF;
+
+    -- Valida o modelo: não pode ser nulo nem composto só por espaços
+    IF p_modelo IS NULL OR TRIM(p_modelo) = '' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'O modelo da turbina não pode ser vazio.';
+    END IF;
+
+    -- Valida a potência nominal: precisa ser maior que zero
+    IF p_energiaNominal IS NULL OR p_energiaNominal <= 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'A energia nominal da turbina deve ser maior que zero.';
+    END IF;
+
+    -- Insere a turbina (se a usina não existir, a FK barra com erro 1452)
+    INSERT INTO turbinas (usina, nome, modelo, energiaNominal)
+    VALUES (p_usina, TRIM(p_nome), TRIM(p_modelo), p_energiaNominal);
+
+    -- Devolve o id gerado para o PHP ler como uma linha de resultado
+    SELECT LAST_INSERT_ID() AS id;
+END$$
+
+-- ---------------------------------------------------------------------
+-- 2.2) Inserir alerta
+--      Registra um alerta no histórico. A data/hora é preenchida
+--      automaticamente pelo banco (CURRENT_TIMESTAMP).
+--      Devolve o id do alerta criado.
+-- ---------------------------------------------------------------------
+
+-- Remove a procedure caso ela já exista
+DROP PROCEDURE IF EXISTS sp_inserir_alerta$$
+
+-- Declara a procedure com seus parâmetros de entrada
+CREATE PROCEDURE sp_inserir_alerta(
+    IN p_turbina  INT,           -- id da turbina que gerou o alerta (pode ser NULL)
+    IN p_mensagem VARCHAR(150),  -- texto do alerta
+    IN p_status   VARCHAR(20)    -- 'Normal', 'ALERTA' ou 'CRITICO'
+)
+BEGIN
+    -- Valida a mensagem: não pode ser nula nem vazia
+    IF p_mensagem IS NULL OR TRIM(p_mensagem) = '' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'A mensagem do alerta não pode ser vazia.';
+    END IF;
+
+    -- Valida o status: só são aceitos os três valores definidos
+    IF p_status IS NULL OR p_status NOT IN ('Normal', 'ALERTA', 'CRITICO') THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Status inválido. Use Normal, ALERTA ou CRITICO.';
+    END IF;
+
+    -- Insere o alerta (dataEmissao usa o valor padrão: agora)
+    INSERT INTO alertas (turbina, mensagem, status)
+    VALUES (p_turbina, TRIM(p_mensagem), p_status);
+
+    -- Devolve o id gerado
+    SELECT LAST_INSERT_ID() AS id;
+END$$
+
+-- ---------------------------------------------------------------------
+-- 2.3) Cadastrar usuário
+--      A senha deve chegar JÁ CRIPTOGRAFADA (use password_hash() no PHP);
+--      o banco nunca deve guardar a senha em texto puro.
+--      Devolve o id do usuário criado.
+-- ---------------------------------------------------------------------
+
+-- Remove a procedure caso ela já exista
+DROP PROCEDURE IF EXISTS sp_cadastrar_usuario$$
+
+-- Declara a procedure com seus parâmetros de entrada
+CREATE PROCEDURE sp_cadastrar_usuario(
+    IN p_usina INT,           -- id da usina onde o usuário trabalha
+    IN p_nome  VARCHAR(100),  -- nome do usuário/operador
+    IN p_email VARCHAR(255),  -- e-mail usado no login (único)
+    IN p_senha VARCHAR(255)   -- hash da senha
+)
+BEGIN
+    -- Valida o nome: não pode ser nulo nem vazio
+    IF p_nome IS NULL OR TRIM(p_nome) = '' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'O nome do usuário não pode ser vazio.';
+    END IF;
+
+    -- Valida o e-mail: formato mínimo algo@dominio.ext
+    IF p_email IS NULL OR p_email NOT LIKE '%_@_%._%' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'E-mail inválido.';
+    END IF;
+
+    -- Valida a senha: não pode ser nula nem vazia
+    IF p_senha IS NULL OR p_senha = '' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'A senha não pode ser vazia.';
+    END IF;
+
+    -- Insere o usuário (e-mail repetido gera erro 1062 pela chave única)
+    INSERT INTO usuarios (usina, nome, email, senha)
+    VALUES (p_usina, TRIM(p_nome), LOWER(TRIM(p_email)), p_senha);
+
+    -- Devolve o id gerado
+    SELECT LAST_INSERT_ID() AS id;
+END$$
+
+-- ---------------------------------------------------------------------
+-- 2.4) Deletar turbina
+--      O trigger trg_turbinas_after_delete decrementa a contagem da usina.
+--      Os alertas da turbina são mantidos no histórico (FK com SET NULL).
+-- ---------------------------------------------------------------------
+
+-- Remove a procedure caso ela já exista
+DROP PROCEDURE IF EXISTS sp_deletar_turbina$$
+
+-- Declara a procedure com seu parâmetro de entrada
+CREATE PROCEDURE sp_deletar_turbina(
+    IN p_id INT  -- id da turbina a ser removida
+)
+BEGIN
+    -- Confirma que a turbina existe antes de tentar apagar
+    IF NOT EXISTS (SELECT 1 FROM turbinas WHERE id = p_id) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Turbina não encontrada.';
+    END IF;
+
+    -- Apaga a turbina
+    DELETE FROM turbinas WHERE id = p_id;
+END$$
+
+-- ---------------------------------------------------------------------
+-- 2.5) Deletar usuário
+-- ---------------------------------------------------------------------
+
+-- Remove a procedure caso ela já exista
+DROP PROCEDURE IF EXISTS sp_deletar_usuario$$
+
+-- Declara a procedure com seu parâmetro de entrada
+CREATE PROCEDURE sp_deletar_usuario(
+    IN p_id INT  -- id do usuário a ser removido
+)
+BEGIN
+    -- Confirma que o usuário existe antes de tentar apagar
+    IF NOT EXISTS (SELECT 1 FROM usuarios WHERE id = p_id) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Usuário não encontrado.';
+    END IF;
+
+    -- Apaga o usuário
+    DELETE FROM usuarios WHERE id = p_id;
+END$$
+
+-- ---------------------------------------------------------------------
+-- 2.6) Atualizar usuário
+--      Se p_senha vier NULL ou vazia, a senha atual é mantida.
+--      A usina do usuário não é alterada por esta procedure.
+-- ---------------------------------------------------------------------
+
+-- Remove a procedure caso ela já exista
+DROP PROCEDURE IF EXISTS sp_atualizar_usuario$$
+
+-- Declara a procedure com seus parâmetros de entrada
+CREATE PROCEDURE sp_atualizar_usuario(
+    IN p_id    INT,           -- id do usuário a ser atualizado
+    IN p_nome  VARCHAR(100),  -- novo nome
+    IN p_email VARCHAR(255),  -- novo e-mail
+    IN p_senha VARCHAR(255)   -- novo hash de senha (NULL/vazio = não alterar)
+)
+BEGIN
+    -- Confirma que o usuário existe
+    IF NOT EXISTS (SELECT 1 FROM usuarios WHERE id = p_id) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Usuário não encontrado.';
+    END IF;
+
+    -- Valida o nome
+    IF p_nome IS NULL OR TRIM(p_nome) = '' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'O nome do usuário não pode ser vazio.';
+    END IF;
+
+    -- Valida o e-mail
+    IF p_email IS NULL OR p_email NOT LIKE '%_@_%._%' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'E-mail inválido.';
+    END IF;
+
+    -- Atualiza os dados; COALESCE/NULLIF mantém a senha antiga quando não enviada
+    UPDATE usuarios
+       SET nome  = TRIM(p_nome),
+           email = LOWER(TRIM(p_email)),
+           senha = COALESCE(NULLIF(p_senha, ''), senha)
+     WHERE id = p_id;
+END$$
+
+-- ---------------------------------------------------------------------
+-- 2.7) Atualizar turbina
+--      Atualiza nome, modelo, potência nominal, energia gerada, temperatura
+--      e o estado ligada/desligada. A usina da turbina não é alterada aqui
+--      (assim a contagem mantida pelos triggers continua correta).
+-- ---------------------------------------------------------------------
+
+-- Remove a procedure caso ela já exista
+DROP PROCEDURE IF EXISTS sp_atualizar_turbina$$
+
+-- Declara a procedure com seus parâmetros de entrada
+CREATE PROCEDURE sp_atualizar_turbina(
+    IN p_id             INT,            -- id da turbina a ser atualizada
+    IN p_nome           VARCHAR(100),   -- novo nome
+    IN p_modelo         VARCHAR(100),   -- novo modelo
+    IN p_energiaNominal INT,            -- nova potência nominal
+    IN p_energiaGerada  INT,            -- energia gerada atual
+    IN p_temperatura    DECIMAL(10,2),  -- temperatura atual
+    IN p_ligada         BOOLEAN         -- TRUE = operando, FALSE = desligada
+)
+BEGIN
+    -- Confirma que a turbina existe
+    IF NOT EXISTS (SELECT 1 FROM turbinas WHERE id = p_id) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Turbina não encontrada.';
+    END IF;
+
+    -- Valida o nome
+    IF p_nome IS NULL OR TRIM(p_nome) = '' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'O nome da turbina não pode ser vazio.';
+    END IF;
+
+    -- Valida o modelo
+    IF p_modelo IS NULL OR TRIM(p_modelo) = '' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'O modelo da turbina não pode ser vazio.';
+    END IF;
+
+    -- Valida a potência nominal
+    IF p_energiaNominal IS NULL OR p_energiaNominal <= 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'A energia nominal da turbina deve ser maior que zero.';
+    END IF;
+
+    -- Atualiza todos os campos editáveis da turbina
+    UPDATE turbinas
+       SET nome           = TRIM(p_nome),
+           modelo         = TRIM(p_modelo),
+           energiaNominal = p_energiaNominal,
+           energiaGerada  = p_energiaGerada,
+           temperatura    = p_temperatura,
+           ligada         = p_ligada
+     WHERE id = p_id;
+END$$
+
+-- ---------------------------------------------------------------------
+-- 2.8) Atualizar usina
+--      Grava as medições simuladas da usina: nível da água, energia
+--      gerada, vazão e a situação do reservatório. Nome, geração nominal
+--      e quantidade de turbinas não são alterados aqui (a quantidade é
+--      mantida pelos triggers da seção 4).
+-- ---------------------------------------------------------------------
+
+-- Remove a procedure caso ela já exista
+DROP PROCEDURE IF EXISTS sp_atualizar_usina$$
+
+-- Declara a procedure com seus parâmetros de entrada
+CREATE PROCEDURE sp_atualizar_usina(
+    IN p_id            INT,            -- id da usina a ser atualizada
+    IN p_nivelAgua     DECIMAL(5,2),   -- nível do reservatório em percentual
+    IN p_energiaGerada INT,            -- energia gerada no momento (MW)
+    IN p_vazao         INT,            -- vazão (m³/s)
+    IN p_statusUsina   VARCHAR(20)     -- 'nível baixo', 'nível normal' ou 'nível muito alto'
+)
+BEGIN
+    -- Confirma que a usina existe
+    IF NOT EXISTS (SELECT 1 FROM usinas WHERE id = p_id) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Usina não encontrada.';
+    END IF;
+
+    -- Valida o nível da água: é um percentual
+    IF p_nivelAgua IS NULL OR p_nivelAgua < 0 OR p_nivelAgua > 100 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'O nível da água deve estar entre 0 e 100.';
+    END IF;
+
+    -- Valida a energia gerada: não pode ser negativa
+    IF p_energiaGerada IS NULL OR p_energiaGerada < 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'A energia gerada não pode ser negativa.';
+    END IF;
+
+    -- Valida a vazão: não pode ser negativa
+    IF p_vazao IS NULL OR p_vazao < 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'A vazão não pode ser negativa.';
+    END IF;
+
+    -- Valida a situação: só são aceitos os três valores do ENUM
+    IF p_statusUsina IS NULL
+       OR p_statusUsina NOT IN ('nível baixo', 'nível normal', 'nível muito alto') THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Status da usina inválido.';
+    END IF;
+
+    -- Atualiza as medições da usina
+    UPDATE usinas
+       SET nivelAgua     = p_nivelAgua,
+           energiaGerada = p_energiaGerada,
+           vazao         = p_vazao,
+           statusUsina   = p_statusUsina
+     WHERE id = p_id;
+END$$
+
+DELIMITER ;
+
+
+/* ---------------------------------------------------------------------
+   3) TABELAS
+   ---------------------------------------------------------------------
+   Ordem de criação: usinas -> usuarios -> turbinas -> alertas
+   (cada tabela só pode referenciar, via FK, uma tabela já criada).
+   --------------------------------------------------------------------- */
+
+-- ---------------------------------------------------------------------
+-- 3.1) Tabela usinas
+-- ---------------------------------------------------------------------
+
+-- Cria a tabela de usinas se ela ainda não existir
+CREATE TABLE IF NOT EXISTS usinas (
+    -- Identificador da usina, gerado automaticamente
+    id             INT           NOT NULL AUTO_INCREMENT,
+    -- Nome da usina
+    nome           VARCHAR(100)  NOT NULL,
+    -- Nível do reservatório em PERCENTUAL (0 a 100)
+    nivelAgua      DECIMAL(5,2)  NOT NULL DEFAULT 0.00,
+    -- Geração nominal total da usina (MW)
+    geracaoNominal INT           NOT NULL DEFAULT 0,
+    -- Energia gerada no momento (MW)
+    energiaGerada  INT           NOT NULL DEFAULT 0,
+    -- Quantidade de turbinas da usina (mantida pelos triggers da seção 4)
+    turbinas       INT           NOT NULL DEFAULT 0,
+    -- Vazão (m³/s)
+    vazao          INT           NOT NULL DEFAULT 0,
+    -- Situação do reservatório; o ENUM só aceita estes três valores
+    statusUsina    ENUM('nível baixo', 'nível normal', 'nível muito alto')
+                   NOT NULL DEFAULT 'nível normal',
+
+    -- Chave primária
+    PRIMARY KEY (id),
+
+    -- O nível da água é um percentual: precisa estar entre 0 e 100
+    CONSTRAINT chk_usinas_nivelAgua      CHECK (nivelAgua BETWEEN 0 AND 100),
+    -- Valores numéricos não podem ser negativos
+    CONSTRAINT chk_usinas_geracaoNominal CHECK (geracaoNominal >= 0),
+    CONSTRAINT chk_usinas_energiaGerada  CHECK (energiaGerada >= 0),
+    CONSTRAINT chk_usinas_turbinas       CHECK (turbinas >= 0),
+    CONSTRAINT chk_usinas_vazao          CHECK (vazao >= 0)
+) ENGINE = InnoDB;
+
+-- ---------------------------------------------------------------------
+-- 3.2) Tabela usuarios (criada após usinas para a FK funcionar)
+-- ---------------------------------------------------------------------
+
+-- Cria a tabela de usuários se ela ainda não existir
+CREATE TABLE IF NOT EXISTS usuarios (
+    -- Identificador do usuário, gerado automaticamente
+    id    INT           NOT NULL AUTO_INCREMENT,
+    -- Usina à qual o usuário pertence
+    usina INT           NOT NULL,
+    -- Nome do usuário
+    nome  VARCHAR(100)  NOT NULL,
+    -- E-mail de login
+    email VARCHAR(255)  NOT NULL,
+    -- Hash da senha (nunca a senha em texto puro)
+    senha VARCHAR(255)  NOT NULL,
+
+    -- Chave primária
+    PRIMARY KEY (id),
+
+    -- Não permite dois usuários com o mesmo e-mail
+    UNIQUE KEY uq_usuarios_email (email),
+
+    -- FK usuário -> usina (não deixa apagar uma usina que ainda tem usuários)
+    CONSTRAINT usuarios_usina_fk FOREIGN KEY (usina)
+        REFERENCES usinas (id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT
+) ENGINE = InnoDB;
+
+-- ---------------------------------------------------------------------
+-- 3.3) Tabela turbinas
+-- ---------------------------------------------------------------------
+
+-- Cria a tabela de turbinas se ela ainda não existir
+CREATE TABLE IF NOT EXISTS turbinas (
+    -- Identificador da turbina, gerado automaticamente
+    id             INT            NOT NULL AUTO_INCREMENT,
+    -- Usina dona da turbina
+    usina          INT            NOT NULL,
+    -- Nome da turbina
+    nome           VARCHAR(100)   NOT NULL,
+    -- Modelo (tipo) da turbina, ex.: Francis, Kaplan, Pelton
+    modelo         VARCHAR(100)   NOT NULL,
+    -- Potência nominal da turbina (MW)
+    energiaNominal INT            NOT NULL,
+    -- Energia gerada no momento (MW)
+    energiaGerada  INT            NOT NULL DEFAULT 0,
+    -- Temperatura atual (°C)
+    temperatura    DECIMAL(10,2)  NOT NULL DEFAULT 0.00,
+    -- Estado da turbina: TRUE = operando, FALSE = desligada
+    ligada         BOOLEAN        NOT NULL DEFAULT FALSE,
+
+    -- Chave primária
+    PRIMARY KEY (id),
+
+    -- O modelo não pode ser vazio; a potência nominal precisa ser positiva;
+    -- os demais valores não podem ser negativos
+    CONSTRAINT chk_turbinas_modelo         CHECK (TRIM(modelo) <> ''),
+    CONSTRAINT chk_turbinas_energiaNominal CHECK (energiaNominal > 0),
+    CONSTRAINT chk_turbinas_energiaGerada  CHECK (energiaGerada >= 0),
+    CONSTRAINT chk_turbinas_temperatura    CHECK (temperatura >= 0),
+
+    -- FK turbina -> usina (não deixa apagar uma usina que ainda tem turbinas)
+    CONSTRAINT turbinas_usina_fk FOREIGN KEY (usina)
+        REFERENCES usinas (id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT
+) ENGINE = InnoDB;
+
+-- ---------------------------------------------------------------------
+-- 3.4) Tabela alertas (também é o histórico de alertas)
+-- ---------------------------------------------------------------------
+
+-- Cria a tabela de alertas se ela ainda não existir
+CREATE TABLE IF NOT EXISTS alertas (
+    -- Identificador do alerta, gerado automaticamente
+    id          INT           NOT NULL AUTO_INCREMENT,
+    -- Turbina que originou o alerta; fica NULL se a turbina for apagada,
+    -- assim o histórico não se perde
+    turbina     INT           NULL,
+    -- Texto do alerta
+    mensagem    VARCHAR(150)  NOT NULL,
+    -- Severidade; o ENUM só aceita estes três valores
+    status      ENUM('Normal', 'ALERTA', 'CRITICO') NOT NULL,
+    -- Data e hora de emissão, preenchida automaticamente
+    dataEmissao DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    -- Chave primária
+    PRIMARY KEY (id),
+
+    -- Índice para listar o histórico do mais recente ao mais antigo
+    KEY idx_alertas_dataEmissao (dataEmissao),
+
+    -- FK alerta -> turbina (apagar a turbina mantém o alerta, com turbina = NULL)
+    CONSTRAINT alertas_turbina_fk FOREIGN KEY (turbina)
+        REFERENCES turbinas (id)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL
+) ENGINE = InnoDB;
+
+
+/* ---------------------------------------------------------------------
+   4) TRIGGERS (contagem de turbinas da usina)
+   --------------------------------------------------------------------- */
+
+-- Troca o delimitador para poder escrever o corpo dos triggers
+DELIMITER $$
+
+-- ---------------------------------------------------------------------
+-- 4.1) Incrementa usinas.turbinas quando uma turbina é cadastrada
+-- ---------------------------------------------------------------------
+
+-- Remove o trigger caso ele já exista
+DROP TRIGGER IF EXISTS trg_turbinas_after_insert$$
+
+-- Dispara DEPOIS de cada INSERT na tabela turbinas
+CREATE TRIGGER trg_turbinas_after_insert
+AFTER INSERT ON turbinas
+FOR EACH ROW
+BEGIN
+    -- Soma 1 na usina apontada pela FK da turbina recém-criada (NEW.usina)
+    UPDATE usinas
+       SET turbinas = turbinas + 1
+     WHERE id = NEW.usina;
+END$$
+
+-- ---------------------------------------------------------------------
+-- 4.2) Decrementa usinas.turbinas quando uma turbina é deletada
+-- ---------------------------------------------------------------------
+
+-- Remove o trigger caso ele já exista
+DROP TRIGGER IF EXISTS trg_turbinas_after_delete$$
+
+-- Dispara DEPOIS de cada DELETE na tabela turbinas
+CREATE TRIGGER trg_turbinas_after_delete
+AFTER DELETE ON turbinas
+FOR EACH ROW
+BEGIN
+    -- Subtrai 1 da usina da turbina removida (OLD.usina);
+    -- GREATEST evita que a contagem fique negativa
+    UPDATE usinas
+       SET turbinas = GREATEST(turbinas - 1, 0)
+     WHERE id = OLD.usina;
+END$$
+
+-- Volta o delimitador para o padrão ";"
+DELIMITER ;
+
+
+/* ---------------------------------------------------------------------
+   5) VIEW: HISTÓRICO DE ALERTAS
+   ---------------------------------------------------------------------
+   O histórico NÃO é uma tabela separada: a própria tabela alertas já
+   guarda tudo com data/hora. Duplicar os dados em outra tabela só criaria
+   risco de inconsistência. A view junta o alerta ao nome da turbina e da
+   usina e ordena do mais recente ao mais antigo (tela de alertas).
+   --------------------------------------------------------------------- */
+
+-- Cria (ou substitui) a view do histórico de alertas
+CREATE OR REPLACE VIEW vw_historico_alertas AS
+SELECT
+    a.id          AS idAlerta,      -- id do alerta
+    a.dataEmissao AS dataEmissao,   -- quando foi emitido
+    a.status      AS status,        -- Normal / ALERTA / CRITICO
+    a.mensagem    AS mensagem,      -- texto do alerta
+    a.turbina     AS idTurbina,     -- id da turbina (NULL se ela foi apagada)
+    t.nome        AS nomeTurbina,   -- nome da turbina
+    u.id          AS idUsina,       -- id da usina da turbina
+    u.nome        AS nomeUsina      -- nome da usina da turbina
+FROM alertas a
+-- LEFT JOIN mantém o alerta mesmo se a turbina já não existir
+LEFT JOIN turbinas t ON t.id = a.turbina
+LEFT JOIN usinas   u ON u.id = t.usina
+-- Mais recente primeiro; o id desempata alertas emitidos no mesmo segundo
+ORDER BY a.dataEmissao DESC, a.id DESC;
+
+
+/* ---------------------------------------------------------------------
+   6) CARGA INICIAL
+   ---------------------------------------------------------------------
+   Por ora existe uma única usina (a SENAI, fictícia) e não há procedure
+   de cadastro de usina. Os valores abaixo são apenas um ponto de partida.
+   --------------------------------------------------------------------- */
+
+-- INSERT IGNORE: se a usina 1 já existir, o comando é ignorado (script reexecutável)
+INSERT IGNORE INTO usinas
+    (id, nome, nivelAgua, geracaoNominal, energiaGerada, turbinas, vazao, statusUsina)
+VALUES
+    (1, 'Usina SENAI', 55.00, 100, 0, 0, 0, 'nível normal');
+    
+-- Turbina 1: operando, temperatura normal (abaixo de 70 °C)
+INSERT INTO turbinas (usina, nome, modelo, energiaNominal, energiaGerada, temperatura, ligada)
+VALUES (1, 'Turbina 1', 'Francis', 50, 35, 62.40, TRUE);
+
+-- Turbina 2: operando, temperatura em atenção (entre 70 °C e 85 °C)
+INSERT INTO turbinas (usina, nome, modelo, energiaNominal, energiaGerada, temperatura, ligada)
+VALUES (1, 'Turbina 2', 'Kaplan', 50, 40, 78.30, TRUE);
+
+-- Usuário operador da usina 1 (a senha é o hash bcrypt de "senai123")
+INSERT INTO usuarios (usina, nome, email, senha)
+VALUES (1, 'Operador SENAI', 'operador@senai.com',
+        '$2b$12$8Wcbs9690e0SxUBPd0LWf.dijhhBaG0UAyKoYgKb1aE0PS2k4e1JO');
