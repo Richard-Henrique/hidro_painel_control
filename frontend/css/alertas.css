@@ -1,0 +1,208 @@
+/* ==========================================================================
+   HidroControl — alertas.css
+   Estilos exclusivos da tela de alertas (pages/alertas.html).
+
+   A moldura (sidebar, topbar, rodapé) e os componentes comuns — kpi-card,
+   range-switch, status-badge, section-header — vêm do dashboard.css, que o
+   style.css já importa. Aqui entra só o que é desta tela.
+   Para carregar, acrescente no style.css (junto das outras importações):
+       @import url(alertas.css);
+
+   Índice
+   1. Cabeçalho da seção (título + filtro)
+   2. Lista de alertas
+   3. Item de alerta
+      3.1 Variantes de severidade
+      3.2 Alerta resolvido
+   4. Estado vazio
+   5. Responsivo
+   ========================================================================== */
+
+
+/* ==========================================================================
+   1. CABEÇALHO DA SEÇÃO (título + filtro)
+   Estende o .section-header do dashboard.css: título e subtítulo à
+   esquerda, filtro Todos / Atenção / Crítico à direita.
+   ========================================================================== */
+.section-header--filters {
+  align-items: flex-end;
+}
+
+.section-header--filters .section-header__title {
+  font-size: 1.375rem;
+}
+
+.section-header__subtitle {
+  margin-top: 0.125rem;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
+
+/* ==========================================================================
+   2. LISTA DE ALERTAS
+   ========================================================================== */
+.alert-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+}
+
+
+/* ==========================================================================
+   3. ITEM DE ALERTA
+   Grid de 3 colunas: ícone | texto | selo + horário.
+   As cores vêm de duas variáveis (--alert-color e --alert-soft), definidas
+   em cada variante da seção 3.1.
+   ========================================================================== */
+.alert-item {
+  --alert-color: var(--color-neutral);
+  --alert-soft: var(--color-neutral-soft);
+
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border-soft);
+  border-left: 4px solid var(--alert-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card-sm);
+}
+
+/* Ícone dentro de um quadrado colorido */
+.alert-item__icon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 1.25rem;
+  color: var(--alert-color);
+  background-color: var(--alert-soft);
+  border-radius: var(--radius-sm);
+}
+
+/* Texto */
+.alert-item__content {
+  min-width: 0;
+}
+
+.alert-item__title {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.alert-item__origin {
+  margin-top: 0.125rem;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
+/* Selo de severidade + "há 5 segundos · Ativo" */
+.alert-item__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.375rem;
+}
+
+.alert-item__meta {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+
+/* --------------------------------------------------------------------------
+   3.1 Variantes de severidade (o JS troca a classe do <li>)
+   -------------------------------------------------------------------------- */
+.alert-item--warning {
+  --alert-color: var(--color-warning);
+  --alert-soft: var(--color-warning-soft);
+}
+
+.alert-item--danger {
+  --alert-color: var(--color-danger);
+  --alert-soft: color-mix(in srgb, var(--color-danger) 12%, white);
+}
+
+/* "Normal": a turbina ou o reservatório voltou ao normal */
+.alert-item--normal {
+  --alert-color: var(--color-success);
+  --alert-soft: var(--color-success-soft);
+}
+
+
+/* --------------------------------------------------------------------------
+   3.2 Alerta resolvido (não é mais o último da sua origem): fica discreto
+   -------------------------------------------------------------------------- */
+.alert-item--resolved {
+  background-color: var(--color-field);
+  box-shadow: none;
+}
+
+.alert-item--resolved .alert-item__title {
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.alert-item--resolved .alert-item__icon {
+  opacity: 0.75;
+}
+
+
+/* ==========================================================================
+   4. ESTADO VAZIO ("Carregando alertas…" / "Nenhum alerta registrado.")
+   ========================================================================== */
+.alert-list__empty {
+  padding: 2rem 1.5rem;
+  font-size: 0.9375rem;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.alert-list__empty[hidden] {
+  display: none !important;
+}
+
+
+/* ==========================================================================
+   5. RESPONSIVO
+   ========================================================================== */
+
+/* Celular (abaixo de 576px): o selo e o horário descem para baixo do texto */
+@media (max-width: 575.98px) {
+  .alert-item {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 0.75rem 1rem;
+    padding: 1rem;
+  }
+
+  .alert-item__side {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 0.75rem;
+  }
+
+  .alert-item__meta {
+    text-align: left;
+  }
+
+  /* O filtro ocupa a largura toda e rola se não couber */
+  .section-header--filters .range-switch {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}

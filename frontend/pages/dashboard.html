@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<!--
+  =====================================================================
+  dashboard.html — Tela do dashboard (HTML pronto para receber dados via JS)
+
+  Nenhum valor de usina, turbina ou alerta está escrito aqui: tudo que
+  vem do back é preenchido pelo JS (com textContent, nunca innerHTML).
+  O que fica fixo no HTML são só textos que não dependem do back (rótulos,
+  limites da RN01 de 30% e 90%, links de navegação).
+
+  Como o JS acha os elementos (atributos data-*):
+    data-layout="..."  moldura comum às 3 telas (sidebar e topbar).
+                       Quem preenche é o layout.js. Lista na seção 1 dele.
+    data-dash="..."    elementos exclusivos do dashboard.
+                       Quem preenche é o dashboard.js.
+
+  Estado inicial: números aparecem como "—" e as barras vazias até o
+  primeiro ciclo do monitor.js terminar. Selos da sidebar e bolinha do
+  sino começam com [hidden] e o layout.js os mostra quando há o que mostrar.
+
+  As variantes de cor são trocadas pelo JS, trocando a classe:
+    status-badge--success | --warning | --danger | --neutral
+    status-dot--success   | --warning | --danger | --neutral
+  (as de "danger" ainda precisam ser criadas no CSS)
+
+  Local: frontend/pages/dashboard.html
+  =====================================================================
+-->
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard | HidroControl</title>
+
+  <!-- Bootstrap + Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- Estilos do projeto (carregados depois do Bootstrap para sobrescrevê-lo).
+       O style.css já importa o dashboard.css. -->
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body class="page page--dashboard">
+
+  <a class="skip-link visually-hidden-focusable" href="#main">Ir para o conteúdo</a>
+
+  <div class="app">
+
+    <!-- ======================================================================
+         SIDEBAR (Bootstrap Offcanvas responsivo)
+         ====================================================================== -->
+    <aside class="sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebar" aria-labelledby="sidebar-brand">
+
+      <div class="sidebar__header">
+        <a class="sidebar__brand" href="dashboard.html" id="sidebar-brand">
+          <span class="sidebar__brand-icon" aria-hidden="true"><i class="bi bi-droplet"></i></span>
+          <span class="sidebar__brand-text">HidroControl</span>
+        </a>
+        <button type="button" class="sidebar__close btn-close btn-close-white d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Fechar menu"></button>
+      </div>
+
+      <div class="sidebar__body">
+        <nav class="sidebar__nav" aria-label="Navegação principal">
+          <ul class="sidebar__list nav nav-pills flex-column">
+            <li class="sidebar__item nav-item">
+              <a class="sidebar__link nav-link active" href="dashboard.html" aria-current="page">
+                <i class="sidebar__icon bi bi-grid-1x2" aria-hidden="true"></i>
+                <span class="sidebar__label">Dashboard</span>
+              </a>
+            </li>
+            <li class="sidebar__item nav-item">
+              <a class="sidebar__link nav-link" href="turbinas.html">
+                <i class="sidebar__icon bi bi-lightning-charge" aria-hidden="true"></i>
+                <span class="sidebar__label">Turbinas</span>
+                <!-- Quantidade de turbinas (layout.js) -->
+                <span class="sidebar__badge badge" data-layout="badge-turbinas" hidden></span>
+              </a>
+            </li>
+            <li class="sidebar__item nav-item">
+              <a class="sidebar__link nav-link" href="alertas.html">
+                <i class="sidebar__icon bi bi-bell" aria-hidden="true"></i>
+                <span class="sidebar__label">Alertas</span>
+                <!-- Alertas ativos (layout.js); some quando são 0 -->
+                <span class="sidebar__badge sidebar__badge--warning badge" data-layout="badge-alertas" hidden></span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
+      <div class="sidebar__footer">
+        <!-- Conexão com o back (layout.js): "Conectando...", "SCADA Online" ou "SCADA Offline" -->
+        <p class="sidebar__status">
+          <span class="status-dot status-dot--neutral" data-layout="status-ponto" aria-hidden="true"></span>
+          <span class="sidebar__status-text" data-layout="status-texto">Conectando...</span>
+        </p>
+      </div>
+
+    </aside>
+
+    <!-- ======================================================================
+         CONTEÚDO
+         ====================================================================== -->
+    <div class="app__content">
+
+      <!-- Topbar -->
+      <header class="topbar">
+        <div class="topbar__heading">
+          <button class="topbar__menu-btn btn d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-controls="sidebar" aria-label="Abrir menu">
+            <i class="bi bi-list" aria-hidden="true"></i>
+          </button>
+          <div class="topbar__titles">
+            <h1 class="topbar__title">Dashboard</h1>
+            <!-- Nome da usina (layout.js) -->
+            <p class="topbar__subtitle" data-layout="usina-nome">—</p>
+          </div>
+        </div>
+
+        <div class="topbar__actions">
+
+          <!-- Notificações: leva à tela de alertas; a bolinha só aparece com alertas ativos -->
+          <a class="topbar__icon-btn btn" href="alertas.html" data-layout="sino" aria-label="Notificações">
+            <i class="bi bi-bell" aria-hidden="true"></i>
+            <span class="topbar__notification-dot" data-layout="sino-ponto" aria-hidden="true" hidden></span>
+          </a>
+
+          <!-- Usuário: iniciais no avatar (layout.js) -->
+          <div class="topbar__user dropdown">
+            <button class="topbar__avatar btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu do usuário" data-layout="avatar">?</button>
+            <ul class="topbar__menu dropdown-menu dropdown-menu-end">
+              <li><a class="topbar__menu-item dropdown-item" href="#" data-layout="sair">Sair</a></li>
+            </ul>
+          </div>
+
+        </div>
+      </header>
+
+      <!-- Principal -->
+      <main class="dashboard" id="main">
+
+        <!-- Banner de atenção: só aparece quando há alerta ativo.
+             O wrapper recebe [hidden]; o JS troca as variantes da caixa
+             (status-banner--warning / --danger e alert-warning / alert-danger)
+             e o ícone (bi-exclamation-triangle / bi-x-octagon). -->
+        <div data-dash="banner" hidden>
+          <div class="status-banner status-banner--warning alert alert-warning" role="alert" data-dash="banner-caixa">
+            <span class="status-banner__icon" aria-hidden="true"><i class="bi bi-exclamation-triangle" data-dash="banner-icone"></i></span>
+            <p class="status-banner__text">
+              <strong class="status-banner__title" data-dash="banner-titulo">Atenção</strong>
+              <span class="status-banner__separator" aria-hidden="true">·</span>
+              <span class="status-banner__message" data-dash="banner-mensagem"></span>
+            </p>
+            <!-- aria-hidden: o "há 5 s" muda a cada ciclo e leitores de tela não devem repetir o aviso toda vez -->
+            <time class="status-banner__time" data-dash="banner-tempo" aria-hidden="true"></time>
+            <button class="status-banner__action btn btn-sm" type="button" data-dash="banner-atualizar">
+              <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+              Atualizar
+            </button>
+          </div>
+        </div>
+
+        <!-- Indicadores -->
+        <section class="dashboard__section" aria-labelledby="kpis-title">
+          <h2 class="visually-hidden" id="kpis-title">Indicadores principais</h2>
+
+          <div class="kpi-grid row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3">
+
+            <!-- Reservatório (GET /api/usina: nivelAgua e statusNivel) -->
+            <div class="col">
+              <article class="kpi-card kpi-card--reservoir card">
+                <div class="kpi-card__body card-body">
+                  <header class="kpi-card__header">
+                    <h3 class="kpi-card__label">Reservatório</h3>
+                    <span class="kpi-card__icon kpi-card__icon--blue" aria-hidden="true"><i class="bi bi-droplet"></i></span>
+                  </header>
+
+                  <p class="kpi-card__value" data-dash="reservatorio-valor">—</p>
+
+                  <div class="kpi-card__gauge">
+                    <!-- aria-valuenow é preenchido pelo JS (sem ele, o leitor de tela entende "sem valor ainda") -->
+                    <div class="kpi-card__progress progress" role="progressbar" aria-label="Nível do reservatório" aria-valuemin="0" aria-valuemax="100" data-dash="reservatorio-progresso">
+                      <div class="kpi-card__progress-bar kpi-card__progress-bar--blue progress-bar" style="width: 0%" data-dash="reservatorio-barra"></div>
+                    </div>
+                    <!-- Limites da RN01 (30% e 90%): constantes do negócio, ficam fixos -->
+                    <span class="kpi-card__marker kpi-card__marker--min" style="left: 30%" aria-hidden="true"></span>
+                    <span class="kpi-card__marker kpi-card__marker--max" style="left: 90%" aria-hidden="true"></span>
+                  </div>
+
+                  <footer class="kpi-card__footer">
+                    <span class="status-badge status-badge--neutral badge" data-dash="reservatorio-status">—</span>
+                    <span class="kpi-card__meta">Ref: 30% - 90%</span>
+                  </footer>
+                </div>
+              </article>
+            </div>
+
+            <!-- Vazão (GET /api/usina: vazao; a tendência compara com a leitura anterior) -->
+            <div class="col">
+              <article class="kpi-card kpi-card--flow card">
+                <div class="kpi-card__body card-body">
+                  <header class="kpi-card__header">
+                    <h3 class="kpi-card__label">Vazão</h3>
+                    <span class="kpi-card__icon kpi-card__icon--cyan" aria-hidden="true"><i class="bi bi-water"></i></span>
+                  </header>
+
+                  <p class="kpi-card__value" data-dash="vazao-valor">—</p>
+
+                  <footer class="kpi-card__footer">
+                    <!-- Escondida até existir uma leitura anterior para comparar.
+                         O JS troca kpi-card__trend--up / --down / --stable e o ícone
+                         (bi-arrow-up-right / bi-arrow-down-right / bi-dash). -->
+                    <span class="kpi-card__trend kpi-card__trend--up" data-dash="vazao-tendencia" hidden>
+                      <i class="bi bi-arrow-up-right" data-dash="vazao-tendencia-icone" aria-hidden="true"></i>
+                      <span data-dash="vazao-tendencia-texto"></span>
+                      vs. anterior
+                    </span>
+                  </footer>
+                </div>
+              </article>
+            </div>
+
+            <!-- Potência total (soma das turbinas ligadas / soma da potência nominal de todas) -->
+            <div class="col">
+              <article class="kpi-card kpi-card--power card">
+                <div class="kpi-card__body card-body">
+                  <header class="kpi-card__header">
+                    <h3 class="kpi-card__label">Potência total</h3>
+                    <span class="kpi-card__icon kpi-card__icon--indigo" aria-hidden="true"><i class="bi bi-lightning-charge"></i></span>
+                  </header>
+
+                  <p class="kpi-card__value" data-dash="potencia-valor">—</p>
+
+                  <div class="kpi-card__gauge">
+                    <div class="kpi-card__progress progress" role="progressbar" aria-label="Potência atual em relação à nominal" aria-valuemin="0" aria-valuemax="100" data-dash="potencia-progresso">
+                      <div class="kpi-card__progress-bar kpi-card__progress-bar--cyan progress-bar" style="width: 0%" data-dash="potencia-barra"></div>
+                    </div>
+                  </div>
+
+                  <footer class="kpi-card__footer">
+                    <span class="kpi-card__detail" data-dash="potencia-detalhe">—</span>
+                    <span class="kpi-card__meta kpi-card__meta--mono" data-dash="potencia-nominal"></span>
+                  </footer>
+                </div>
+              </article>
+            </div>
+
+            <!-- Temperatura máxima (a turbina mais quente da lista) -->
+            <div class="col">
+              <article class="kpi-card kpi-card--temperature card">
+                <div class="kpi-card__body card-body">
+                  <header class="kpi-card__header">
+                    <h3 class="kpi-card__label">Temperatura máx.</h3>
+                    <span class="kpi-card__icon kpi-card__icon--amber" aria-hidden="true"><i class="bi bi-thermometer-half"></i></span>
+                  </header>
+
+                  <p class="kpi-card__value" data-dash="temperatura-valor">—</p>
+
+                  <footer class="kpi-card__footer">
+                    <span class="status-badge status-badge--neutral badge" data-dash="temperatura-status">—</span>
+                    <span class="kpi-card__detail" data-dash="temperatura-turbina"></span>
+                  </footer>
+                </div>
+              </article>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- Histórico + Alertas -->
+        <section class="dashboard__section" aria-label="Histórico e alertas">
+          <div class="overview-grid row g-3">
+
+            <!-- Histórico (leituras anotadas pelo historico.js; o back não guarda histórico) -->
+            <div class="col-12 col-xl-8">
+              <article class="chart-card card">
+                <header class="chart-card__header card-header">
+                  <div class="chart-card__heading">
+                    <!-- O JS troca o texto conforme a janela escolhida ("Histórico · última 1 h", ...) -->
+                    <h2 class="chart-card__title" data-dash="grafico-titulo">Histórico · últimas 24 h</h2>
+                    <ul class="chart-card__legend">
+                      <li class="chart-card__legend-item chart-card__legend-item--level">
+                        <span class="chart-card__legend-dot" aria-hidden="true"></span>Nível
+                      </li>
+                      <li class="chart-card__legend-item chart-card__legend-item--flow">
+                        <span class="chart-card__legend-dot" aria-hidden="true"></span>Vazão
+                      </li>
+                    </ul>
+                  </div>
+
+                  <!-- Janela do gráfico: o value de cada opção é a chave de JANELAS_MS (historico.js) -->
+                  <div class="range-switch" role="group" aria-label="Período do histórico">
+                    <input class="range-switch__input btn-check" type="radio" name="range" id="range-1h" value="1h" autocomplete="off" data-dash="janela">
+                    <label class="range-switch__option btn" for="range-1h">1 h</label>
+
+                    <input class="range-switch__input btn-check" type="radio" name="range" id="range-6h" value="6h" autocomplete="off" data-dash="janela">
+                    <label class="range-switch__option btn" for="range-6h">6 h</label>
+
+                    <input class="range-switch__input btn-check" type="radio" name="range" id="range-24h" value="24h" autocomplete="off" data-dash="janela" checked>
+                    <label class="range-switch__option btn" for="range-24h">24 h</label>
+                  </div>
+                </header>
+
+                <div class="chart-card__body card-body">
+                  <!-- Escala do desenho (o dashboard.js deve usar a mesma):
+                         eixo X: 43 (leitura mais antiga da janela) até 721 (mais recente)
+                         eixo Y: nível 0% em y=250 e 100% em y=37 (2,1333 px por 1%)
+                       Por isso os limites de 90% e 30% caem em y=58 e y=186, fixos.
+                       A vazão (m³/s) não tem a mesma unidade do nível: o JS a normaliza
+                       para caber nesta escala.
+                       As linhas (polyline) e os rótulos do eixo X começam vazios. -->
+                  <svg class="chart" viewBox="0 0 752 292" role="img" aria-labelledby="chart-title chart-desc">
+                    <title id="chart-title">Histórico de nível e vazão do reservatório</title>
+                    <desc id="chart-desc" data-dash="grafico-descricao">Ainda não há leituras suficientes para desenhar o gráfico.</desc>
+
+                    <!-- Limites de alerta (RN01) -->
+                    <line class="chart__threshold chart__threshold--upper" x1="43" y1="58" x2="721" y2="58"/>
+                    <line class="chart__threshold chart__threshold--lower" x1="43" y1="186" x2="721" y2="186"/>
+
+                    <!-- Séries (preenchidas pelo JS) -->
+                    <polyline class="chart__line chart__line--level" points="" data-dash="grafico-nivel"/>
+                    <polyline class="chart__line chart__line--flow" points="" data-dash="grafico-vazao"/>
+
+                    <!-- Mensagem enquanto há menos de 2 leituras na janela (o JS esconde) -->
+                    <text class="chart__empty" x="382" y="150" text-anchor="middle" data-dash="grafico-vazio">Coletando leituras…</text>
+
+                    <!-- Eixo X: os rótulos de hora são criados pelo JS dentro do grupo -->
+                    <line class="chart__axis" x1="0" y1="288" x2="752" y2="288"/>
+                    <g class="chart__labels" data-dash="grafico-eixo-x"></g>
+                  </svg>
+                </div>
+
+                <footer class="chart-card__footer card-footer">
+                  <span class="chart-card__note chart-card__note--upper">
+                    <span class="chart-card__note-line chart-card__note-line--upper" aria-hidden="true"></span>
+                    Alerta Superior (90%)
+                  </span>
+                  <!-- Deve bater com INTERVALO_PADRAO_MS do monitor.js (5 s) -->
+                  <span class="chart-card__note chart-card__note--refresh">Atualizado a cada 5 s</span>
+                  <span class="chart-card__note chart-card__note--lower">
+                    <span class="chart-card__note-line chart-card__note-line--lower" aria-hidden="true"></span>
+                    Alerta Inferior (30%)
+                  </span>
+                </footer>
+              </article>
+            </div>
+
+            <!-- Alertas recentes (GET /api/alertas) -->
+            <div class="col-12 col-xl-4">
+              <article class="alerts-card card">
+                <header class="alerts-card__header card-header">
+                  <h2 class="alerts-card__title">Alertas recentes</h2>
+                  <!-- Ex.: "2 ativos" -->
+                  <span class="alerts-card__count badge" data-dash="alertas-contagem">—</span>
+                </header>
+
+                <!-- Os itens vêm do <template id="tpl-alerta-recente"> -->
+                <ul class="alerts-card__list list-group list-group-flush" data-dash="alertas-lista"></ul>
+
+                <!-- Texto de "carregando" / "nenhum alerta registrado"; some quando há itens -->
+                <p class="alerts-card__empty" data-dash="alertas-vazio">Carregando alertas…</p>
+
+                <footer class="alerts-card__footer card-footer">
+                  <a class="alerts-card__link" href="alertas.html">
+                    Ver todos os alertas
+                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                  </a>
+                </footer>
+              </article>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- Turbinas (GET /api/turbinas) -->
+        <section class="dashboard__section" aria-labelledby="turbines-title">
+          <header class="section-header">
+            <h2 class="section-header__title" id="turbines-title">
+              <!-- Ex.: "Turbinas · 3 de 4 operando" -->
+              <span data-dash="turbinas-resumo">Turbinas</span>
+              <span class="status-dot status-dot--neutral" data-dash="turbinas-ponto" aria-hidden="true"></span>
+            </h2>
+            <a class="section-header__link" href="turbinas.html">Gerenciar turbinas</a>
+          </header>
+
+          <!-- Os cards vêm do <template id="tpl-turbina"> -->
+          <div class="turbine-grid row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3" data-dash="turbinas-grade"></div>
+
+          <!-- Texto de "carregando" / "nenhuma turbina cadastrada"; some quando há cards -->
+          <p class="turbine-grid__empty" data-dash="turbinas-vazio">Carregando turbinas…</p>
+        </section>
+
+      </main>
+
+      <!-- Rodapé -->
+      <footer class="app-footer">
+        <p class="app-footer__copy">HidroControl · Usina Hidrelétrica Experimental SENAI</p>
+        <p class="app-footer__info">
+          <span class="app-footer__item">Valores simulados · Protótipo</span>
+        </p>
+      </footer>
+
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODELOS (<template>)
+       Ficam dentro da página porque só o api.js pode fazer fetch, então um
+       templates.html separado não teria como ser lido pelo JS.
+       O JS clona o modelo (template.content.cloneNode(true)), preenche os
+       campos data-dash com textContent e adiciona na lista.
+       ======================================================================== -->
+
+  <!-- Card de turbina. Variantes que o JS troca:
+         card:   turbine-card--running | --warning | --critical | --offline
+         ponto:  status-dot--success | --warning | --danger | --neutral
+         barra:  turbine-card__progress-bar--success | --warning | --danger | --neutral
+         selo:   status-badge--success | --warning | --danger | --neutral
+         temp.:  turbine-card__temp--warning (e --danger) quando em atenção/crítico -->
+  <template id="tpl-turbina">
+    <div class="col">
+      <article class="turbine-card turbine-card--offline card" data-dash="turbina-card">
+        <div class="turbine-card__body card-body">
+          <header class="turbine-card__header">
+            <div class="turbine-card__heading">
+              <h3 class="turbine-card__name" data-dash="turbina-nome"></h3>
+              <!-- Ex.: "Francis · 22 MW" (modelo · potência gerada agora) -->
+              <p class="turbine-card__meta" data-dash="turbina-meta"></p>
+            </div>
+            <span class="status-dot status-dot--neutral" role="img" data-dash="turbina-ponto"></span>
+          </header>
+
+          <!-- A barra mostra a temperatura (0 a 100 °C) -->
+          <div class="turbine-card__progress progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" data-dash="turbina-progresso">
+            <div class="turbine-card__progress-bar turbine-card__progress-bar--neutral progress-bar" style="width: 0%" data-dash="turbina-barra"></div>
+          </div>
+
+          <footer class="turbine-card__footer">
+            <span class="status-badge status-badge--neutral badge" data-dash="turbina-selo"></span>
+            <span class="turbine-card__temp" data-dash="turbina-temperatura"></span>
+          </footer>
+        </div>
+      </article>
+    </div>
+  </template>
+
+  <!-- Item da lista "Alertas recentes". Variantes da bolinha:
+         alerts-card__dot--warning | --danger | --success (voltou ao normal) | --neutral -->
+  <template id="tpl-alerta-recente">
+    <li class="alerts-card__item list-group-item">
+      <span class="alerts-card__dot alerts-card__dot--neutral" data-dash="alerta-ponto" aria-hidden="true"></span>
+      <div class="alerts-card__content">
+        <p class="alerts-card__item-title" data-dash="alerta-titulo"></p>
+        <!-- Ex.: "Há 5 segundos · Atenção" -->
+        <p class="alerts-card__item-meta" data-dash="alerta-meta"></p>
+      </div>
+    </li>
+  </template>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Módulo da página: monta o layout, assina o monitor e desenha a tela -->
+  <script type="module" src="../js/dashboard.js"></script>
+</body>
+</html>

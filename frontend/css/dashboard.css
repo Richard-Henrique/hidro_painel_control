@@ -1,0 +1,1346 @@
+/* ==========================================================================
+   HidroControl — dashboard.css
+   Estilos exclusivos do DASHBOARD (dashboard.html)
+
+   ORDEM DE CARREGAMENTO NO <head> (importante!):
+     1. Bootstrap CSS
+     2. Bootstrap Icons
+     3. style.css      (base: reset, variáveis, .page)
+     4. dashboard.css  (este arquivo)
+   O Bootstrap precisa vir ANTES, senão ele sobrescreve as variáveis --bs-*
+   definidas aqui.
+
+   Obs.: o Bootstrap é sobrescrito pelas variáveis --bs-* de cada componente
+   (mais robusto do que brigar com a especificidade dos seletores dele).
+
+   Índice
+   1. Componentes compartilhados (status-dot, status-badge)
+   2. Layout principal (Grid)
+   3. Sidebar
+   4. Topbar
+   5. Alternadores segmentados (tema e período)
+   6. Conteúdo principal e base dos cards
+   7. Banner de atenção (ainda não usado no HTML)
+   8. Cards de indicadores (KPIs)
+   9. Card do histórico (gráfico)
+   10. Card de alertas recentes
+   11. Turbinas
+   12. Rodapé
+   13. Responsivo
+   14. Acessibilidade
+   ========================================================================== */
+
+
+/* ==========================================================================
+   1. COMPONENTES COMPARTILHADOS
+   ========================================================================== */
+
+/* Ponto de status */
+.status-dot {
+  --dot-color: var(--color-neutral);
+  display: inline-block;
+  flex-shrink: 0;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  background-color: var(--dot-color);
+}
+
+.status-dot--success {
+  --dot-color: var(--color-success);
+}
+
+.status-dot--warning {
+  --dot-color: var(--color-warning);
+}
+
+.status-dot--danger {
+  --dot-color: var(--color-danger);
+}
+
+.status-dot--neutral {
+  --dot-color: var(--color-neutral);
+}
+
+/* Badge de status (sobre .badge do Bootstrap) */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  border-radius: 0.375rem;
+}
+
+.status-badge--success {
+  color: var(--color-success-strong);
+  background-color: var(--color-success-soft);
+}
+
+.status-badge--warning {
+  color: var(--color-warning-text);
+  background-color: var(--color-warning-soft);
+}
+
+.status-badge--danger {
+  color: var(--color-danger);
+  background-color: color-mix(in srgb, var(--color-danger) 12%, white);
+}
+
+.status-badge--neutral {
+  color: var(--color-neutral-strong);
+  background-color: var(--color-neutral-soft);
+}
+
+
+/* ==========================================================================
+   2. LAYOUT PRINCIPAL (Grid)
+   ========================================================================== */
+.app {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Coluna vertical: topbar + conteúdo + rodapé.
+   Flex (e não grid) para que o position: sticky da topbar funcione. */
+.app__content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+
+/* ==========================================================================
+   3. SIDEBAR
+   (Bootstrap Offcanvas responsivo + Nav pills)
+   ========================================================================== */
+.sidebar {
+  --bs-offcanvas-width: var(--sidebar-width);
+  --bs-offcanvas-color: var(--color-on-dark);
+  --bs-offcanvas-bg: var(--color-navy);
+
+  display: flex;
+  flex-direction: column;
+  color: var(--color-on-dark);
+  /* O .offcanvas-lg do Bootstrap força "transparent !important" a partir de
+     992px; por isso este !important é necessário para manter o fundo. */
+  background-color: var(--color-navy) !important;
+}
+
+/* Cabeçalho da sidebar (logo) */
+.sidebar__header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--topbar-height);
+  padding: 0 1.875rem;
+  border-bottom: 1px solid var(--color-sidebar-line);
+}
+
+.sidebar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-on-dark);
+  text-decoration: none;
+}
+
+.sidebar__brand:focus-visible {
+  outline: 2px solid var(--color-sky);
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
+}
+
+.sidebar__brand-icon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 1.25rem;
+  color: var(--color-sky);
+  background-color: rgba(31, 111, 222, 0.22);
+  border-radius: var(--radius-md);
+}
+
+.sidebar__brand-text {
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+/* Corpo da sidebar (navegação) */
+.sidebar__body {
+  flex: 1 1 auto;
+  padding: 1.25rem;
+  overflow-y: auto;
+}
+
+/* Nav pills: cores do Bootstrap trocadas via variáveis */
+.sidebar__list {
+  --bs-nav-link-color: var(--color-on-dark-muted);
+  --bs-nav-link-hover-color: var(--color-on-dark);
+  --bs-nav-pills-border-radius: 0.75rem;
+  --bs-nav-pills-link-active-color: var(--color-sidebar-active-text);
+  --bs-nav-pills-link-active-bg: var(--color-sidebar-active-bg);
+
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+}
+
+.sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 1.125rem;
+  height: 3.125rem;
+  padding: 0 1.125rem;
+  font-size: 1.0625rem;
+  font-weight: 500;
+}
+
+.sidebar__link:hover {
+  background-color: var(--color-sidebar-hover);
+}
+
+.sidebar__link:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--color-sky);
+}
+
+.sidebar__icon {
+  flex-shrink: 0;
+  font-size: 1.375rem;
+  line-height: 1;
+}
+
+/* Contador ao lado do item de menu */
+.sidebar__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.875rem;
+  height: 1.5rem;
+  margin-left: auto;
+  padding: 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-on-dark-muted);
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-pill);
+}
+
+.sidebar__badge--warning {
+  color: var(--color-warning-light);
+  background-color: rgba(245, 158, 11, 0.22);
+}
+
+/* Rodapé da sidebar (status SCADA + versão) */
+.sidebar__footer {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: var(--footer-height);
+  padding: 0 1.25rem;
+  border-top: 1px solid var(--color-sidebar-line);
+}
+
+.sidebar__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.875rem;
+}
+
+.sidebar__version {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+
+/* ==========================================================================
+   4. TOPBAR
+   ========================================================================== */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  height: var(--topbar-height);
+  padding: 0 var(--content-padding);
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+/* Título da página */
+.topbar__heading {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.topbar__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+.topbar__subtitle {
+  font-size: 0.9375rem;
+  line-height: 1.3;
+  color: var(--color-text-muted);
+}
+
+/* Ações (tema, notificações, usuário) */
+.topbar__actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Botões do topo (base .btn do Bootstrap) */
+.topbar__menu-btn,
+.topbar__icon-btn {
+  --bs-btn-padding-x: 0;
+  --bs-btn-padding-y: 0;
+  --bs-btn-color: var(--color-text-muted);
+  --bs-btn-bg: var(--color-card);
+  --bs-btn-border-color: var(--color-border-soft);
+  --bs-btn-border-radius: 0.75rem;
+  --bs-btn-hover-color: var(--color-text);
+  --bs-btn-hover-bg: var(--color-surface-muted);
+  --bs-btn-hover-border-color: var(--color-border);
+  --bs-btn-active-color: var(--color-text);
+  --bs-btn-active-bg: var(--color-surface-muted);
+  --bs-btn-active-border-color: var(--color-border);
+  --bs-btn-focus-shadow-rgb: 31, 111, 222;
+
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 2.625rem;
+  height: 2.625rem;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+/* Pontinho de notificação nova */
+.topbar__notification-dot {
+  position: absolute;
+  top: 0.4375rem;
+  right: 0.4375rem;
+  width: 0.75rem;
+  height: 0.75rem;
+  background-color: var(--color-warning);
+  border: 2px solid var(--color-card);
+  border-radius: 50%;
+}
+
+/* Avatar do usuário */
+.topbar__avatar {
+  --bs-btn-padding-x: 0;
+  --bs-btn-padding-y: 0;
+  --bs-btn-color: var(--color-on-dark);
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: transparent;
+  --bs-btn-border-radius: 0.75rem;
+  --bs-btn-hover-color: var(--color-on-dark);
+  --bs-btn-hover-bg: transparent;
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-color: var(--color-on-dark);
+  --bs-btn-active-bg: transparent;
+  --bs-btn-active-border-color: transparent;
+  --bs-btn-focus-shadow-rgb: 31, 111, 222;
+
+  display: grid;
+  place-items: center;
+  width: 2.8125rem;
+  height: 2.8125rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background-image: linear-gradient(135deg, var(--color-brand), #0ea5e9);
+}
+
+/* Menu do usuário (Bootstrap Dropdown) */
+.topbar__menu {
+  --bs-dropdown-min-width: 11rem;
+  --bs-dropdown-padding-y: 0.375rem;
+  --bs-dropdown-font-size: 0.9375rem;
+  --bs-dropdown-bg: var(--color-card);
+  --bs-dropdown-color: var(--color-text);
+  --bs-dropdown-border-color: var(--color-border-soft);
+  --bs-dropdown-border-radius: var(--radius-md);
+  --bs-dropdown-inner-border-radius: calc(var(--radius-md) - 1px);
+  --bs-dropdown-divider-bg: var(--color-border-soft);
+  --bs-dropdown-box-shadow: var(--shadow-card);
+  --bs-dropdown-link-color: var(--color-text);
+  --bs-dropdown-link-hover-color: var(--color-text);
+  --bs-dropdown-link-hover-bg: var(--color-surface);
+  --bs-dropdown-link-active-color: var(--color-brand);
+  --bs-dropdown-link-active-bg: var(--color-brand-soft);
+}
+
+.topbar__menu-item {
+  font-weight: 500;
+}
+
+
+/* ==========================================================================
+   5. ALTERNADORES SEGMENTADOS (tema e período)
+   btn-check + btn do Bootstrap
+   ========================================================================== */
+
+/* Base comum */
+.theme-switch,
+.range-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  background-color: var(--color-surface-muted);
+  border: 1px solid var(--color-border-soft);
+}
+
+.theme-switch__option,
+.range-switch__option {
+  --bs-btn-border-width: 0;
+  --bs-btn-border-radius: var(--radius-sm);
+  --bs-btn-color: var(--color-text-muted);
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: transparent;
+  --bs-btn-hover-color: var(--color-text);
+  --bs-btn-hover-bg: transparent;
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-color: var(--color-brand);
+  --bs-btn-active-bg: var(--color-card);
+  --bs-btn-active-border-color: transparent;
+  --bs-btn-focus-shadow-rgb: 31, 111, 222;
+
+  line-height: 1;
+}
+
+/* Opção selecionada */
+.theme-switch__input:checked + .theme-switch__option,
+.range-switch__input:checked + .range-switch__option {
+  box-shadow:
+    0 0 0 1px var(--color-border-soft),
+    0 1px 2px rgba(15, 27, 51, 0.1);
+}
+
+/* Tema (claro / escuro / automático) */
+.theme-switch {
+  padding: 0.25rem;
+  border-radius: 0.75rem;
+}
+
+.theme-switch__option {
+  display: grid;
+  place-items: center;
+  width: 2.125rem;
+  height: 2.125rem;
+  font-size: 1.0625rem;
+}
+
+/* Período do histórico (1 h / 6 h / 24 h) */
+.range-switch {
+  padding: 0.1875rem;
+  border-radius: var(--radius-md);
+}
+
+.range-switch__option {
+  display: inline-flex;
+  align-items: center;
+  height: 1.9375rem;
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.range-switch__input:checked + .range-switch__option {
+  font-weight: 700;
+}
+
+
+/* ==========================================================================
+   6. CONTEÚDO PRINCIPAL E BASE DOS CARDS
+   ========================================================================== */
+
+/* Área principal (Grid) */
+.dashboard {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 2rem;
+  padding: 2.5rem var(--content-padding);
+}
+
+.dashboard__section {
+  min-width: 0;
+}
+
+/* Gutters das grades do Bootstrap (.row) */
+.kpi-grid,
+.turbine-grid {
+  --bs-gutter-x: 1.25rem;
+  --bs-gutter-y: 1.25rem;
+}
+
+.overview-grid {
+  --bs-gutter-x: 2rem;
+  --bs-gutter-y: 2rem;
+}
+
+/* Base comum dos cards (Bootstrap .card) */
+.kpi-card,
+.chart-card,
+.alerts-card,
+.turbine-card {
+  --bs-card-bg: var(--color-card);
+  --bs-card-border-color: var(--color-border-soft);
+  --bs-card-border-radius: var(--radius-lg);
+  --bs-card-inner-border-radius: calc(var(--radius-lg) - 1px);
+  --bs-card-cap-bg: transparent;
+
+  height: 100%;
+  color: var(--color-text);
+  box-shadow: var(--shadow-card-sm);
+}
+
+
+/* ==========================================================================
+   7. BANNER DE ATENÇÃO (Bootstrap Alert)
+   O banner é controlado pelo dashboard.js e começa oculto no HTML.
+   ========================================================================== */
+.status-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-bottom: 0;
+  padding: 1.1875rem 1.25rem;
+  border-radius: 0.75rem;
+}
+
+.status-banner--warning {
+  color: var(--color-warning-text);
+  background-color: var(--color-warning-soft);
+  border: 1px solid var(--color-warning-border);
+}
+
+.status-banner--danger {
+  color: #8f1720;
+  background-color: color-mix(in srgb, var(--color-danger) 9%, white);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 32%, white);
+}
+
+.status-banner--danger .status-banner__icon {
+  color: var(--color-danger);
+  background-color: color-mix(in srgb, var(--color-danger) 16%, white);
+}
+
+.status-banner--danger .status-banner__time,
+.status-banner--danger .status-banner__separator {
+  color: #a32630;
+}
+
+.status-banner--danger .status-banner__action {
+  --bs-btn-color: #8f1720;
+  --bs-btn-bg: color-mix(in srgb, var(--color-danger) 13%, white);
+  --bs-btn-hover-color: #72131a;
+  --bs-btn-hover-bg: color-mix(in srgb, var(--color-danger) 22%, white);
+  --bs-btn-active-color: #72131a;
+  --bs-btn-active-bg: color-mix(in srgb, var(--color-danger) 22%, white);
+}
+
+.status-banner__icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 1.875rem;
+  height: 1.875rem;
+  font-size: 1rem;
+  color: var(--color-warning-strong);
+  background-color: rgba(245, 158, 11, 0.2);
+  border-radius: 50%;
+}
+
+.status-banner__text {
+  flex: 1 1 14rem;
+  min-width: 0;
+  font-size: 1.0625rem;
+  line-height: 1.4;
+}
+
+.status-banner__title {
+  font-weight: 700;
+}
+
+.status-banner__separator {
+  margin: 0 0.5rem;
+  color: var(--color-warning-muted);
+}
+
+.status-banner__message {
+  font-weight: 500;
+}
+
+.status-banner__time {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--color-warning-muted);
+}
+
+.status-banner__action {
+  --bs-btn-padding-x: 0.75rem;
+  --bs-btn-padding-y: 0.375rem;
+  --bs-btn-font-size: 0.875rem;
+  --bs-btn-border-radius: var(--radius-sm);
+  --bs-btn-color: var(--color-warning-text);
+  --bs-btn-bg: var(--color-warning-soft-strong);
+  --bs-btn-border-color: transparent;
+  --bs-btn-hover-color: var(--color-warning-text);
+  --bs-btn-hover-bg: #fcdc85;
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-color: var(--color-warning-text);
+  --bs-btn-active-bg: #fcdc85;
+  --bs-btn-active-border-color: transparent;
+  --bs-btn-focus-shadow-rgb: 245, 158, 11;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-weight: 600;
+}
+
+
+/* ==========================================================================
+   8. CARDS DE INDICADORES (KPIs)
+   Reservatório, Vazão, Potência total e Temperatura máxima
+   ========================================================================== */
+.kpi-card {
+  min-height: 12.625rem;
+}
+
+.kpi-card__body {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 1.25rem;
+}
+
+/* Cabeçalho (título + ícone) */
+.kpi-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.kpi-card__label {
+  padding-top: 0.125rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--color-text-muted);
+}
+
+.kpi-card__icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 1.125rem;
+  border-radius: var(--radius-md);
+}
+
+.kpi-card__icon--blue {
+  color: var(--color-brand);
+  background-color: var(--color-brand-soft);
+}
+
+.kpi-card__icon--cyan {
+  color: var(--color-accent-strong);
+  background-color: var(--color-accent-soft);
+}
+
+.kpi-card__icon--indigo {
+  color: var(--color-indigo);
+  background-color: var(--color-indigo-soft);
+}
+
+.kpi-card__icon--amber {
+  color: var(--color-warning-strong);
+  background-color: var(--color-warning-soft);
+}
+
+/* Valor principal */
+.kpi-card__value {
+  font-size: clamp(1.75rem, 2.4vw, 2.375rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+/* Barra de progresso (Bootstrap Progress) */
+.kpi-card__gauge {
+  position: relative;
+}
+
+.kpi-card__progress {
+  --bs-progress-height: 0.5rem;
+  --bs-progress-bg: var(--color-track);
+  --bs-progress-border-radius: var(--radius-pill);
+  --bs-progress-box-shadow: none;
+}
+
+.kpi-card__progress-bar {
+  border-radius: var(--radius-pill);
+}
+
+.kpi-card__progress-bar--blue {
+  background-color: var(--color-brand);
+}
+
+.kpi-card__progress-bar--cyan {
+  background-color: var(--color-accent);
+}
+
+/* Marcadores de referência (mínimo e máximo) */
+.kpi-card__marker {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 2px;
+  border-radius: 1px;
+  transform: translateX(-50%);
+}
+
+.kpi-card__marker--min {
+  background-color: rgba(255, 255, 255, 0.85);
+}
+
+.kpi-card__marker--max {
+  background-color: var(--color-danger);
+}
+
+/* Rodapé do card */
+.kpi-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.kpi-card--temperature .kpi-card__footer {
+  justify-content: flex-start;
+}
+
+.kpi-card__meta {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.kpi-card__meta--mono {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+}
+
+.kpi-card__detail {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.kpi-card__trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.kpi-card__trend--up {
+  color: var(--color-success-strong);
+}
+
+.kpi-card__trend--down {
+  color: var(--color-danger);
+}
+
+.kpi-card__trend--stable {
+  color: var(--color-text-muted);
+}
+
+
+/* ==========================================================================
+   9. CARD DO HISTÓRICO (GRÁFICO)
+   ========================================================================== */
+
+/* Cabeçalho (título + legenda + seletor de período) */
+.chart-card__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 1.5rem 1.5rem 0;
+  border-bottom: 0;
+}
+
+.chart-card__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+}
+
+.chart-card__title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+}
+
+/* Legenda */
+.chart-card__legend {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.chart-card__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.chart-card__legend-item--level {
+  color: var(--color-brand);
+}
+
+.chart-card__legend-item--flow {
+  color: var(--color-accent-strong);
+}
+
+.chart-card__legend-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.chart-card__legend-item--flow .chart-card__legend-dot {
+  background-color: var(--color-accent);
+}
+
+/* Corpo */
+.chart-card__body {
+  padding: 0.5rem 1.5rem 0;
+}
+
+/* SVG do gráfico */
+.chart {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.chart__line {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart__line--level {
+  stroke: var(--color-brand);
+}
+
+.chart__line--flow {
+  stroke: var(--color-accent);
+}
+
+.chart__threshold {
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart__threshold--upper {
+  stroke: var(--color-danger-light);
+}
+
+.chart__threshold--lower {
+  stroke: var(--color-warning);
+}
+
+.chart__axis {
+  stroke: var(--color-border-soft);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart__label {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  fill: var(--color-text-muted);
+}
+
+/* Rodapé (notas dos limites + atualização) */
+.chart-card__footer {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.625rem 1.5rem 1.5rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  border-top: 0;
+}
+
+.chart-card__note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chart-card__note--refresh {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.chart-card__note--lower {
+  justify-self: end;
+}
+
+.chart-card__note-line {
+  display: inline-block;
+  width: 1rem;
+  height: 0;
+  border-top: 2px dashed currentColor;
+}
+
+.chart-card__note-line--upper {
+  color: var(--color-danger-light);
+}
+
+.chart-card__note-line--lower {
+  color: var(--color-warning);
+}
+
+
+/* Estados vazios enquanto o dashboard.js ainda não recebeu dados. */
+.chart__empty {
+  fill: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+}
+
+.alerts-card__empty,
+.turbine-grid__empty {
+  padding: 1.5rem;
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+  text-align: center;
+}
+
+.turbine-grid__empty {
+  padding-block: 2rem;
+}
+
+.alerts-card__empty[hidden],
+.turbine-grid__empty[hidden],
+.chart__empty[hidden] {
+  display: none !important;
+}
+
+
+/* ==========================================================================
+   10. CARD DE ALERTAS RECENTES
+   (Bootstrap List group)
+   ========================================================================== */
+
+/* Cabeçalho (título + contador) */
+.alerts-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1.5rem 1.5rem 0;
+  border-bottom: 0;
+}
+
+.alerts-card__title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+}
+
+.alerts-card__count {
+  padding: 0.25rem 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-text-muted);
+  background-color: var(--color-surface-muted);
+  border-radius: var(--radius-pill);
+}
+
+/* Lista */
+.alerts-card__list {
+  --bs-list-group-color: var(--color-text);
+  --bs-list-group-bg: transparent;
+  --bs-list-group-border-width: 0;
+  --bs-list-group-item-padding-x: 0;
+  --bs-list-group-item-padding-y: 0.5625rem;
+
+  flex: 1 1 auto;
+  padding: 1rem 1.5rem 0.5rem;
+}
+
+.alerts-card__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8125rem;
+}
+
+/* Indicador colorido de cada alerta */
+.alerts-card__dot {
+  --dot-color: var(--color-neutral);
+  flex-shrink: 0;
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-top: 0.3125rem;
+  background-color: var(--dot-color);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dot-color) 20%, transparent);
+}
+
+.alerts-card__dot--warning {
+  --dot-color: var(--color-warning);
+}
+
+.alerts-card__dot--danger {
+  --dot-color: var(--color-danger);
+}
+
+.alerts-card__dot--neutral {
+  --dot-color: var(--color-neutral);
+}
+
+.alerts-card__dot--success {
+  --dot-color: var(--color-success);
+}
+
+/* Texto do alerta */
+.alerts-card__content {
+  min-width: 0;
+}
+
+.alerts-card__item-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.alerts-card__item-meta {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
+/* Rodapé (link "Ver todos os alertas") */
+.alerts-card__footer {
+  margin: 0 1.5rem;
+  padding: 1.25rem 0 1.5rem;
+  background-color: transparent;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.alerts-card__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-brand);
+  text-decoration: none;
+}
+
+.alerts-card__link:hover {
+  text-decoration: underline;
+}
+
+.alerts-card__link:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 3px;
+  border-radius: var(--radius-xs);
+}
+
+
+/* ==========================================================================
+   11. TURBINAS
+   ========================================================================== */
+
+/* Cabeçalho da seção */
+.section-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.section-header__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+}
+
+.section-header__link {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-brand);
+  text-decoration: none;
+}
+
+.section-header__link:hover {
+  text-decoration: underline;
+}
+
+.section-header__link:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 3px;
+  border-radius: var(--radius-xs);
+}
+
+/* Card da turbina */
+.turbine-card {
+  min-height: 10rem;
+}
+
+/* Estado: atenção */
+.turbine-card--warning {
+  --bs-card-border-color: #f1c878;
+  box-shadow:
+    0 0 0 3px rgba(245, 158, 11, 0.14),
+    var(--shadow-card-sm);
+}
+
+.turbine-card--critical {
+  --bs-card-border-color: color-mix(in srgb, var(--color-danger) 55%, white);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--color-danger) 13%, transparent),
+    var(--shadow-card-sm);
+}
+
+.turbine-card__body {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1.25rem;
+}
+
+.turbine-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.turbine-card__name {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+}
+
+.turbine-card__meta {
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
+/* Barra de temperatura (Bootstrap Progress) */
+.turbine-card__progress {
+  --bs-progress-height: 0.375rem;
+  --bs-progress-bg: var(--color-track);
+  --bs-progress-border-radius: var(--radius-pill);
+  --bs-progress-box-shadow: none;
+}
+
+.turbine-card__progress-bar {
+  border-radius: var(--radius-pill);
+}
+
+.turbine-card__progress-bar--success {
+  background-color: var(--color-success);
+}
+
+.turbine-card__progress-bar--warning {
+  background-color: var(--color-warning);
+}
+
+.turbine-card__progress-bar--danger {
+  background-color: var(--color-danger);
+}
+
+.turbine-card__progress-bar--neutral {
+  background-color: var(--color-neutral);
+}
+
+/* Rodapé (badge de status + temperatura) */
+.turbine-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.turbine-card .status-badge {
+  font-size: 0.875rem;
+}
+
+.turbine-card__temp {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.turbine-card__temp--warning {
+  font-weight: 700;
+  color: var(--color-warning-strong);
+}
+
+.turbine-card__temp--danger {
+  font-weight: 700;
+  color: var(--color-danger);
+}
+
+/* Estado: desligada */
+.turbine-card--offline .turbine-card__temp {
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+
+/* ==========================================================================
+   12. RODAPÉ
+   ========================================================================== */
+.app-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 1.5rem;
+  min-height: var(--footer-height);
+  padding: 0.75rem var(--content-padding);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.app-footer__info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+}
+
+
+/* ==========================================================================
+   13. RESPONSIVO
+   ========================================================================== */
+
+/* Sidebar fixa ao lado do conteúdo a partir de 992px (breakpoint lg do Bootstrap) */
+@media (min-width: 992px) {
+  .app {
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    height: 100dvh;
+  }
+}
+
+/* Celular (abaixo de 576px): cards do gráfico e dos alertas com menos respiro */
+@media (max-width: 575.98px) {
+  .chart-card__header,
+  .alerts-card__header {
+    padding: 1.25rem 1.25rem 0;
+  }
+
+  .chart-card__body {
+    padding-inline: 1.25rem;
+  }
+
+  .chart-card__footer {
+    grid-template-columns: 1fr;
+    justify-items: start;
+    padding-inline: 1.25rem;
+  }
+
+  .chart-card__note--lower {
+    justify-self: start;
+  }
+
+  .alerts-card__list {
+    padding-inline: 1.25rem;
+  }
+
+  .alerts-card__footer {
+    margin-inline: 1.25rem;
+  }
+}
+
+/* Celular pequeno (abaixo de 480px): esconde o alternador de tema */
+@media (max-width: 479.98px) {
+  .theme-switch {
+    display: none;
+  }
+}
+
+
+/* ==========================================================================
+   14. ACESSIBILIDADE
+   ========================================================================== */
+
+/* Link "Ir para o conteúdo" (visível só com foco do teclado) */
+.skip-link:focus {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 2000;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  color: var(--color-on-dark);
+  background-color: var(--color-brand);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}

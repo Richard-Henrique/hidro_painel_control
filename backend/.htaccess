@@ -1,0 +1,7 @@
+RewriteEngine On
+
+# Não reescreve o próprio index.php (evita laço infinito)
+RewriteRule ^index\.php$ - [L]
+
+# Todo o resto vai para o index.php, e as rotas decidem
+RewriteRule ^ index.php [QSA,L]

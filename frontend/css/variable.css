@@ -1,0 +1,89 @@
+/* ==========================================================================
+   Variaveis css
+   ========================================================================== */
+
+:root {
+  /* Cores */
+  --color-navy: #0a2647;
+  --color-brand: #1f6fde;
+  --color-brand-hover: #1a5fc0;
+  --color-brand-ring: rgba(31, 111, 222, 0.18);
+  --color-accent: #17b5cc;
+  --color-danger: #d92d3a;
+
+  --color-text: #0f1b33;
+  --color-text-muted: #5b6b82;
+  --color-text-placeholder: #8a97aa;
+  --color-on-dark: #ffffff;
+  --color-on-dark-muted: #b7c6dc;
+
+  --color-surface: #f4f7fb;
+  --color-card: #ffffff;
+  --color-field: #f9fbfd;
+  --color-border: #d3dce8;
+  --color-border-soft: #e6ecf4;
+
+  /* Cores - dashboard */
+  --color-sky: #38bdf8;
+  --color-brand-soft: #e6effd;
+  --color-accent-soft: #dcf4f8;
+  --color-accent-strong: #0891b2;
+  --color-indigo: #4f46e5;
+  --color-indigo-soft: #eceefe;
+  --color-surface-muted: #eef2f8;
+  --color-track: #edf1f6;
+
+  /* Cores - estados */
+  --color-success: #10b981;
+  --color-success-strong: #047857;
+  --color-success-soft: #d9f6e8;
+
+  --color-warning: #f59e0b;
+  --color-warning-strong: #d97706;
+  --color-warning-light: #fbbf24;
+  --color-warning-text: #8a3a0c;
+  --color-warning-muted: #a16207;
+  --color-warning-soft: #fef3c7;
+  --color-warning-soft-strong: #fde9a9;
+  --color-warning-border: #f8dd8c;
+
+  --color-neutral: #94a3b8;
+  --color-neutral-strong: #475569;
+  --color-neutral-soft: #e6ebf2;
+
+  --color-danger-light: #f87171;
+
+  /* Cores - sidebar */
+  --color-sidebar-line: rgba(255, 255, 255, 0.12);
+  --color-sidebar-hover: rgba(255, 255, 255, 0.06);
+  --color-sidebar-active-bg: rgba(31, 111, 222, 0.28);
+  --color-sidebar-active-text: var(--color-sky);
+
+  /* Tipografia */
+  --font-sans: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Forma */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-pill: 999px;
+  --field-height: 3rem;
+
+  /* Sombra */
+  --shadow-card:
+    0 1px 2px rgba(15, 27, 51, 0.04),
+    0 12px 32px rgba(15, 27, 51, 0.07);
+  --shadow-card-sm:
+    0 1px 2px rgba(15, 27, 51, 0.04),
+    0 4px 12px rgba(15, 27, 51, 0.04);
+
+  --transition: 150ms ease;
+
+  /* Layout do dashboard */
+  --sidebar-width: 18.75rem;
+  --topbar-height: 5rem;
+  --footer-height: 3.75rem;
+  --content-padding: clamp(1rem, 3vw, 2.5rem);
+}

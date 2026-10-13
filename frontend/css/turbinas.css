@@ -1,0 +1,442 @@
+/* ==========================================================================
+   HidroControl — turbinas.css
+   Estilos exclusivos da tela de turbinas (pages/turbinas.html) e do modal
+   "Nova turbina".
+
+   A moldura (sidebar, topbar, rodapé) e os componentes comuns — kpi-card,
+   turbine-card, status-badge, status-banner, turbine-grid — vêm do
+   dashboard.css; o form-field e o button vêm do style.css. Aqui entra só o
+   que é desta tela (carregue depois deles). Para carregar, acrescente no
+   style.css (depois do dashboard.css):
+       @import url(turbinas.css);
+
+   Índice
+   1. Barra de cadastro (botão "Nova turbina")
+   2. Card da turbina (complementos do card do dashboard)
+   3. Botão secundário
+   4. Modal "Nova turbina"
+      4.1 Janela e fundo
+      4.2 Cabeçalho, título e campos
+      4.3 Campo com unidade e dica
+      4.4 Opções em cartão (tipo e estado inicial)
+      4.5 Rodapé
+   5. Responsivo
+   ========================================================================== */
+
+
+/* ==========================================================================
+   1. BARRA DE CADASTRO
+   ========================================================================== */
+.turbine-toolbar__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.turbine-toolbar__title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+}
+
+.turbine-toolbar__text {
+  margin-top: 0.125rem;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
+/* O .button--primary do login tem margin-top (espaço acima do botão do formulário) */
+.turbine-toolbar__button {
+  gap: 0.5rem;
+  height: 2.75rem;
+  margin-top: 0;
+  padding-inline: 1.25rem;
+}
+
+
+/* ==========================================================================
+   2. CARD DA TURBINA (complementos)
+   Dados em 3 colunas e botão Ligar/Desligar. Barra, selo e variantes de
+   cor do card já existem no dashboard.css.
+   ========================================================================== */
+
+/* Estado, potência e temperatura lado a lado */
+.turbine-card__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.turbine-card__stat {
+  min-width: 0;
+}
+
+.turbine-card__stat-label {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
+.turbine-card__stat-value {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+/* Linha separando os dados dos botões */
+.turbine-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.turbine-card__action {
+  --bs-btn-color: var(--color-text);
+  --bs-btn-bg: var(--color-card);
+  --bs-btn-border-color: var(--color-border-soft);
+  --bs-btn-border-radius: var(--radius-md);
+  --bs-btn-hover-color: var(--color-text);
+  --bs-btn-hover-bg: var(--color-surface-muted);
+  --bs-btn-hover-border-color: var(--color-border);
+  --bs-btn-active-color: var(--color-text);
+  --bs-btn-active-bg: var(--color-surface-muted);
+  --bs-btn-active-border-color: var(--color-border);
+  --bs-btn-focus-shadow-rgb: 31, 111, 222;
+  --bs-btn-disabled-opacity: 0.6;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.375rem;
+  padding: 0 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Desligada: o card fica mais discreto. Os valores continuam legíveis, e
+   uma turbina desligada que ainda está quente mantém o destaque da temperatura. */
+.page--turbinas .turbine-card--offline {
+  --bs-card-bg: var(--color-field);
+}
+
+.page--turbinas .turbine-card--offline .turbine-card__name {
+  color: var(--color-text-muted);
+}
+
+.page--turbinas .turbine-card--offline .turbine-card__stat-value {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.page--turbinas .turbine-card--offline .turbine-card__temp--warning {
+  color: var(--color-warning-strong);
+}
+
+.page--turbinas .turbine-card--offline .turbine-card__temp--danger {
+  color: var(--color-danger);
+}
+
+
+/* ==========================================================================
+   3. BOTÃO SECUNDÁRIO (ex.: "Cancelar")
+   Complementa o .button do style.css, que só tem a variante primária.
+   ========================================================================== */
+.button--secondary {
+  color: var(--color-text);
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+}
+
+.button--secondary:hover {
+  background-color: var(--color-surface-muted);
+}
+
+.button--secondary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--color-brand-ring);
+}
+
+
+/* ==========================================================================
+   4. MODAL "NOVA TURBINA" (Modal do Bootstrap)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   4.1 Janela e fundo (as variáveis --bs-modal-* são do Bootstrap)
+   -------------------------------------------------------------------------- */
+.turbine-modal {
+  --bs-modal-width: 32rem;
+  --bs-modal-padding: 0;
+  --bs-modal-bg: var(--color-card);
+  --bs-modal-border-width: 0;
+  --bs-modal-border-radius: 1.25rem;
+  --bs-modal-box-shadow: 0 24px 64px rgba(10, 38, 71, 0.28);
+}
+
+/* Fundo escurecido (o .modal-backdrop fica fora do .turbine-modal; este é o único modal do projeto) */
+.modal-backdrop {
+  --bs-backdrop-bg: var(--color-navy);
+  --bs-backdrop-opacity: 0.55;
+}
+
+.turbine-modal__form {
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
+}
+
+
+/* --------------------------------------------------------------------------
+   4.2 Cabeçalho, título e campos
+   -------------------------------------------------------------------------- */
+.turbine-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.turbine-modal__icon {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  font-size: 1.375rem;
+  color: var(--color-brand);
+  background-color: var(--color-brand-soft);
+  border-radius: var(--radius-lg);
+}
+
+/* Botão de fechar: quadrado com borda (o .btn-close do Bootstrap vem sem borda e com padding próprio) */
+.turbine-modal__close {
+  box-sizing: border-box;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  background-size: 0.75rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+}
+
+.turbine-modal__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+
+.turbine-modal__text {
+  margin: 0.25rem 0 1.5rem;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.turbine-modal__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* <fieldset> e <legend> vêm com estilos próprios do navegador e do Bootstrap: aqui viram um campo comum */
+.turbine-modal fieldset.form-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.turbine-modal legend.form-field__label {
+  float: none;
+  width: auto;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  line-height: 1.5;
+}
+
+/* O .form-field__input do login reserva espaço à esquerda para um ícone; aqui não há ícone */
+.turbine-modal .form-field__input {
+  padding: 0 1rem;
+}
+
+
+/* --------------------------------------------------------------------------
+   4.3 Campo com unidade (MW) e dica
+   -------------------------------------------------------------------------- */
+.turbine-modal .form-field__control .form-field__input {
+  padding-right: 3.5rem;
+}
+
+.form-field__unit {
+  position: absolute;
+  right: 1rem;
+  font-size: 0.9375rem;
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.form-field__hint {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+/* Campo numérico sem as setinhas do navegador (a unidade ocupa o lado direito) */
+.turbine-modal input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.turbine-modal input[type="number"]::-webkit-inner-spin-button,
+.turbine-modal input[type="number"]::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+
+/* --------------------------------------------------------------------------
+   4.4 Opções em cartão (tipo e estado inicial)
+   Radios com .btn-check + label.btn, como o range-switch do dashboard.
+   A opção marcada usa as variáveis --bs-btn-active-* do Bootstrap.
+   -------------------------------------------------------------------------- */
+.choice-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.choice-grid--tipo {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.choice-grid--estado {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.choice {
+  --bs-btn-padding-x: 0.75rem;
+  --bs-btn-padding-y: 0.75rem;
+  --bs-btn-border-width: 2px;
+  --bs-btn-border-radius: var(--radius-md);
+  --bs-btn-color: var(--color-text-muted);
+  --bs-btn-bg: var(--color-card);
+  --bs-btn-border-color: var(--color-border-soft);
+  --bs-btn-hover-color: var(--color-text);
+  --bs-btn-hover-bg: var(--color-field);
+  --bs-btn-hover-border-color: var(--color-border);
+  --bs-btn-active-color: var(--color-brand);
+  --bs-btn-active-bg: var(--color-brand-soft);
+  --bs-btn-active-border-color: var(--color-brand);
+  --bs-btn-focus-shadow-rgb: 31, 111, 222;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 4.5rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.choice__icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+/* A opção marcada fica em negrito */
+.choice__input:checked + .choice {
+  font-weight: 700;
+}
+
+/* Estado inicial: uma linha com a bolinha de status e o texto */
+.choice--inline {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  min-height: 3.25rem;
+  padding-inline: 1rem;
+}
+
+/* Estado inicial marcado: verde (a bolinha acompanha, como no protótipo) */
+.choice-grid--estado .choice__input:checked + .choice {
+  --bs-btn-active-color: var(--color-success-strong);
+  --bs-btn-active-bg: color-mix(in srgb, var(--color-success) 8%, white);
+  --bs-btn-active-border-color: var(--color-success);
+}
+
+/* Bolinha: cinza na opção desmarcada, verde na marcada (protótipo).
+   Sobrescreve o status-dot--success / --neutral que o HTML coloca em cada opção. */
+.choice-grid--estado .choice .status-dot {
+  --dot-color: var(--color-neutral);
+}
+
+.choice-grid--estado .choice__input:checked + .choice .status-dot {
+  --dot-color: var(--color-success);
+}
+
+
+/* --------------------------------------------------------------------------
+   4.5 Rodapé (Cancelar + Cadastrar)
+   -------------------------------------------------------------------------- */
+.turbine-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.turbine-modal__submit {
+  gap: 0.5rem;
+  margin-top: 0;
+}
+
+
+/* ==========================================================================
+   5. RESPONSIVO
+   ========================================================================== */
+
+/* Celular (abaixo de 576px): menos respiro no modal e botão da barra em largura total */
+@media (max-width: 575.98px) {
+  .turbine-modal__form {
+    padding: 1.5rem;
+  }
+
+  .turbine-toolbar__button {
+    width: 100%;
+  }
+}
+
+/* Celular pequeno (abaixo de 480px): botões do modal empilhados e opções mais compactas */
+@media (max-width: 479.98px) {
+  .turbine-modal__footer {
+    flex-direction: column-reverse;
+  }
+
+  .turbine-modal__footer .button {
+    width: 100%;
+  }
+
+  .choice {
+    --bs-btn-padding-x: 0.375rem;
+  }
+
+  .choice--inline {
+    padding-inline: 0.75rem;
+  }
+}

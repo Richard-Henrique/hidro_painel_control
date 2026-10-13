@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<!--
+  =====================================================================
+  turbinas.html — Tela de turbinas (HTML pronto para receber dados via JS)
+                  + modal "Nova turbina" (POST /api/turbinas)
+
+  Mesma moldura do dashboard.html (sidebar e topbar, atributos data-layout,
+  preenchidos pelo layout.js). Nenhum valor de turbina está escrito aqui:
+  tudo que vem do back é preenchido pelo turbinas.js (com textContent,
+  nunca innerHTML).
+
+  Atributos data-turbinas="..." = elementos exclusivos desta tela.
+
+  Fontes de dados (via estado do monitor.js):
+    cards    -> estado.resumoTurbinas   (operando, total, potenciaGerada,
+                                         potenciaNominal, turbinaMaisQuente)
+    lista    -> estado.turbinas         (GET /api/turbinas)
+  Ações:
+    Ligar / Desligar -> PATCH /api/turbinas/{id}/estado   (alterarEstadoTurbina)
+    Nova turbina     -> POST /api/turbinas                (cadastrarTurbina)
+
+  O modal usa o Modal do Bootstrap (data-bs-toggle / data-bs-dismiss: abrir e
+  fechar já funcionam sem JS). O back recebe só { nome, modelo, energiaNominal }
+  e sempre cria a turbina DESLIGADA: se o operador escolher "Operando", o JS
+  faz um PATCH de estado logo depois do cadastro.
+
+  Editar e Excluir não aparecem: o back ainda não tem essas rotas.
+
+  Variantes trocadas pelo JS (as mesmas dos cards do dashboard):
+    card:   turbine-card--running | --warning | --critical | --offline
+    barra:  turbine-card__progress-bar--success | --warning | --danger | --neutral
+    selo:   status-badge--success | --warning | --danger | --neutral
+  Estilos novos desta tela: css/turbinas.css (linkado logo após o style.css).
+
+  Local: frontend/pages/turbinas.html
+  =====================================================================
+-->
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Turbinas | HidroControl</title>
+
+  <!-- Bootstrap + Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- Estilos do projeto (carregados depois do Bootstrap para sobrescrevê-lo).
+       O style.css já importa o dashboard.css (moldura e componentes comuns);
+       o turbinas.css (linkado em seguida) traz só o que é desta tela. -->
+  <link rel="stylesheet" href="../css/style.css">
+  <!-- Estilos exclusivos desta tela e do modal "Nova turbina". Carregado direto aqui
+       (depois do style.css) para não depender do @import dentro do style.css. -->
+  <link rel="stylesheet" href="../css/turbinas.css">
+
+  <!-- Estilos do modal "Nova turbina" direto aqui: a estrutura usa classes do Bootstrap
+       (d-flex, row/col, form-control, btn...) e este bloco só dá as cores, bordas e
+       medidas do design. Tudo começa com #modal-turbina, então vale mesmo que o
+       turbinas.css não carregue e não é sobrescrito pelo Bootstrap. -->
+  <style>
+    .modal-backdrop { --bs-backdrop-bg: #0a2647; --bs-backdrop-opacity: .55; }
+
+    #modal-turbina {
+      --bs-modal-width: 32rem;
+      --bs-secondary-rgb: 91, 107, 130;
+      color: #0f1b33;
+    }
+    #modal-turbina .modal-content {
+      border: 0;
+      border-radius: 1.25rem;
+      box-shadow: 0 24px 64px rgba(10, 38, 71, .28);
+    }
+    #modal-turbina .turbine-modal__form { padding: 2rem; }
+
+    /* Cabeçalho */
+    #modal-turbina .turbine-modal__icon {
+      width: 3rem; height: 3rem;
+      font-size: 1.375rem;
+      color: #1f6fde;
+      background-color: #e6effd;
+      border-radius: .875rem;
+    }
+    #modal-turbina .turbine-modal__close {
+      box-sizing: border-box;
+      width: 2.25rem; height: 2.25rem;
+      padding: 0;
+      background-size: .75rem;
+      border: 1px solid #e6ecf4;
+      border-radius: .625rem;
+    }
+    #modal-turbina .turbine-modal__title {
+      font-size: 1.5rem; font-weight: 700; line-height: 1.3; letter-spacing: -.02em;
+    }
+    #modal-turbina .turbine-modal__text { font-size: .9375rem; line-height: 1.5; }
+    #modal-turbina .turbine-modal__fields { gap: 1.25rem; }
+
+    /* Rótulos (label e legend) */
+    #modal-turbina .form-label,
+    #modal-turbina legend.form-label {
+      float: none; width: auto;
+      margin-bottom: .5rem;
+      font-size: .875rem; font-weight: 600; line-height: 1.5; letter-spacing: -.01em;
+    }
+
+    /* Campos de texto e número */
+    #modal-turbina .form-control {
+      height: 3rem;
+      padding: 0 1rem;
+      font-size: .9375rem;
+      color: #0f1b33;
+      background-color: #f9fbfd;
+      border: 1px solid #d3dce8;
+      border-radius: .625rem;
+    }
+    #modal-turbina .form-control::placeholder { color: #8a97aa; }
+    #modal-turbina .form-control:hover { border-color: #b9c6d8; }
+    #modal-turbina .form-control:focus {
+      background-color: #fff;
+      border-color: #1f6fde;
+      box-shadow: 0 0 0 4px rgba(31, 111, 222, .18);
+    }
+    #modal-turbina .form-control:user-invalid { border-color: #d92d3a; }
+    #modal-turbina input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
+    #modal-turbina input[type="number"]::-webkit-inner-spin-button,
+    #modal-turbina input[type="number"]::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
+    #modal-turbina .turbine-modal__unit { font-size: .9375rem; }
+    #modal-turbina .turbine-modal__hint {
+      margin: .5rem 0 0; font-size: .875rem; line-height: 1.45; color: #8a97aa;
+    }
+
+    /* Opções em cartão (Tipo e Estado inicial) */
+    #modal-turbina .row { --bs-gutter-x: .75rem; --bs-gutter-y: .75rem; }
+    #modal-turbina .choice {
+      --bs-btn-focus-shadow-rgb: 31, 111, 222;
+      min-height: 4.5rem;
+      padding: .75rem;
+      font-size: .9375rem; font-weight: 500; line-height: 1.2;
+      color: #5b6b82;
+      background-color: #fff;
+      border: 2px solid #e6ecf4;
+      border-radius: .625rem;
+    }
+    #modal-turbina .choice:hover { color: #0f1b33; background-color: #f9fbfd; border-color: #d3dce8; }
+    #modal-turbina .choice__icon { font-size: 1.25rem; line-height: 1; }
+    #modal-turbina .choice__input:checked + .choice {
+      font-weight: 700;
+      color: #1f6fde;
+      background-color: #e6effd;
+      border-color: #1f6fde;
+    }
+    #modal-turbina .choice--inline { min-height: 3.25rem; padding-inline: 1rem; }
+    #modal-turbina .choice__dot {
+      flex-shrink: 0; width: .625rem; height: .625rem; border-radius: 50%; background-color: #94a3b8;
+    }
+    /* Estado inicial marcado: verde, e a bolinha acompanha */
+    #modal-turbina .choice--inline.choice:hover { background-color: #f9fbfd; }
+    #modal-turbina .choice__input:checked + .choice--inline {
+      color: #047857;
+      background-color: #eefcf5;
+      border-color: #10b981;
+    }
+    #modal-turbina .choice__input:checked + .choice--inline .choice__dot { background-color: #10b981; }
+
+    /* Rodapé */
+    #modal-turbina .turbine-modal__footer { --bs-border-color: #e6ecf4; }
+    #modal-turbina .turbine-modal__footer .btn {
+      height: 2.75rem;
+      padding: 0 1.25rem;
+      font-size: .9375rem; font-weight: 700; letter-spacing: -.01em;
+      border-radius: .625rem;
+    }
+    #modal-turbina .turbine-modal__cancel {
+      --bs-btn-color: #0f1b33;
+      --bs-btn-bg: #fff;
+      --bs-btn-border-color: #d3dce8;
+      --bs-btn-hover-color: #0f1b33;
+      --bs-btn-hover-bg: #eef2f8;
+      --bs-btn-hover-border-color: #d3dce8;
+      --bs-btn-active-color: #0f1b33;
+      --bs-btn-active-bg: #eef2f8;
+      --bs-btn-active-border-color: #d3dce8;
+      --bs-btn-focus-shadow-rgb: 31, 111, 222;
+    }
+    #modal-turbina .turbine-modal__submit {
+      --bs-btn-color: #fff;
+      --bs-btn-bg: #1f6fde;
+      --bs-btn-border-color: #1f6fde;
+      --bs-btn-hover-color: #fff;
+      --bs-btn-hover-bg: #1a5fc0;
+      --bs-btn-hover-border-color: #1a5fc0;
+      --bs-btn-active-color: #fff;
+      --bs-btn-active-bg: #1a5fc0;
+      --bs-btn-active-border-color: #1a5fc0;
+      --bs-btn-disabled-color: #fff;
+      --bs-btn-disabled-bg: #1f6fde;
+      --bs-btn-disabled-border-color: #1f6fde;
+      --bs-btn-focus-shadow-rgb: 31, 111, 222;
+    }
+
+    /* Celular */
+    @media (max-width: 575.98px) {
+      #modal-turbina .turbine-modal__form { padding: 1.5rem; }
+    }
+    @media (max-width: 479.98px) {
+      #modal-turbina .choice { padding-inline: .375rem; }
+      #modal-turbina .choice--inline { padding-inline: .75rem; }
+    }
+  </style>
+</head>
+<body class="page page--turbinas">
+
+  <a class="skip-link visually-hidden-focusable" href="#main">Ir para o conteúdo</a>
+
+  <div class="app">
+
+    <!-- ======================================================================
+         SIDEBAR (Bootstrap Offcanvas responsivo)
+         ====================================================================== -->
+    <aside class="sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebar" aria-labelledby="sidebar-brand">
+
+      <div class="sidebar__header">
+        <a class="sidebar__brand" href="dashboard.html" id="sidebar-brand">
+          <span class="sidebar__brand-icon" aria-hidden="true"><i class="bi bi-droplet"></i></span>
+          <span class="sidebar__brand-text">HidroControl</span>
+        </a>
+        <button type="button" class="sidebar__close btn-close btn-close-white d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Fechar menu"></button>
+      </div>
+
+      <div class="sidebar__body">
+        <nav class="sidebar__nav" aria-label="Navegação principal">
+          <ul class="sidebar__list nav nav-pills flex-column">
+            <li class="sidebar__item nav-item">
+              <a class="sidebar__link nav-link" href="dashboard.html">
+                <i class="sidebar__icon bi bi-grid-1x2" aria-hidden="true"></i>
+                <span class="sidebar__label">Dashboard</span>
+              </a>
+            </li>
+            <li class="sidebar__item nav-item">
+              <a class="sidebar__link nav-link active" href="turbinas.html" aria-current="page">
+                <i class="sidebar__icon bi bi-lightning-charge" aria-hidden="true"></i>
+                <span class="sidebar__label">Turbinas</span>
+                <!-- Quantidade de turbinas (layout.js) -->
+                <span class="sidebar__badge badge" data-layout="badge-turbinas" hidden></span>
+              </a>
+            </li>
+            <li class="sidebar__item nav-item">
+              <a class="sidebar__link nav-link" href="alertas.html">
+                <i class="sidebar__icon bi bi-bell" aria-hidden="true"></i>
+                <span class="sidebar__label">Alertas</span>
+                <!-- Alertas ativos (layout.js); some quando são 0 -->
+                <span class="sidebar__badge sidebar__badge--warning badge" data-layout="badge-alertas" hidden></span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
+      <div class="sidebar__footer">
+        <!-- Conexão com o back (layout.js): "Conectando...", "SCADA Online" ou "SCADA Offline" -->
+        <p class="sidebar__status">
+          <span class="status-dot status-dot--neutral" data-layout="status-ponto" aria-hidden="true"></span>
+          <span class="sidebar__status-text" data-layout="status-texto">Conectando...</span>
+        </p>
+      </div>
+
+    </aside>
+
+    <!-- ======================================================================
+         CONTEÚDO
+         ====================================================================== -->
+    <div class="app__content">
+
+      <!-- Topbar -->
+      <header class="topbar">
+        <div class="topbar__heading">
+          <button class="topbar__menu-btn btn d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-controls="sidebar" aria-label="Abrir menu">
+            <i class="bi bi-list" aria-hidden="true"></i>
+          </button>
+          <div class="topbar__titles">
+            <h1 class="topbar__title">Turbinas</h1>
+            <!-- Nome da usina (layout.js) -->
+            <p class="topbar__subtitle"><span data-layout="usina-nome">—</span> · cadastro e acompanhamento</p>
+          </div>
+        </div>
+
+        <div class="topbar__actions">
+
+
+          <!-- Usuário: iniciais no avatar (layout.js) -->
+          <div class="topbar__user dropdown">
+            <button class="topbar__avatar btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu do usuário" data-layout="avatar">?</button>
+            <ul class="topbar__menu dropdown-menu dropdown-menu-end">
+              <li><a class="topbar__menu-item dropdown-item" href="#" data-layout="sair">Sair</a></li>
+            </ul>
+          </div>
+
+        </div>
+      </header>
+
+      <!-- Principal -->
+      <main class="dashboard" id="main">
+
+        <!-- Aviso de erro das ações (ligar/desligar). Reaproveita o banner do dashboard.
+             O wrapper recebe [hidden]; o JS mostra a mensagem do back (ex.: 409 turbina crítica). -->
+        <div data-turbinas="aviso" hidden>
+          <div class="status-banner status-banner--danger alert alert-danger" role="alert">
+            <span class="status-banner__icon" aria-hidden="true"><i class="bi bi-x-octagon"></i></span>
+            <p class="status-banner__text">
+              <strong class="status-banner__title">Não foi possível concluir a ação</strong>
+              <span class="status-banner__separator" aria-hidden="true">·</span>
+              <span class="status-banner__message" data-turbinas="aviso-mensagem"></span>
+            </p>
+            <button class="status-banner__action btn btn-sm" type="button" data-turbinas="aviso-fechar">Fechar</button>
+          </div>
+        </div>
+
+        <!-- Indicadores (estado.resumoTurbinas). Reaproveitam o kpi-card do dashboard. -->
+        <section class="dashboard__section" aria-labelledby="kpis-title">
+          <h2 class="visually-hidden" id="kpis-title">Resumo das turbinas</h2>
+
+          <div class="kpi-grid row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3">
+            <div class="col">
+              <article class="kpi-card card">
+                <div class="kpi-card__body card-body">
+                  <h3 class="kpi-card__label">Turbinas operando</h3>
+                  <!-- Ex.: "3 de 4" -->
+                  <p class="kpi-card__value" data-turbinas="kpi-operando">—</p>
+                </div>
+              </article>
+            </div>
+            <div class="col">
+              <article class="kpi-card card">
+                <div class="kpi-card__body card-body">
+                  <h3 class="kpi-card__label">Potência gerada</h3>
+                  <p class="kpi-card__value" data-turbinas="kpi-potencia">—</p>
+                </div>
+              </article>
+            </div>
+            <div class="col">
+              <article class="kpi-card card">
+                <div class="kpi-card__body card-body">
+                  <h3 class="kpi-card__label">Potência nominal total</h3>
+                  <p class="kpi-card__value" data-turbinas="kpi-nominal">—</p>
+                </div>
+              </article>
+            </div>
+            <div class="col">
+              <article class="kpi-card kpi-card--temperature card">
+                <div class="kpi-card__body card-body">
+                  <h3 class="kpi-card__label">Temperatura máxima</h3>
+                  <p class="kpi-card__value" data-turbinas="kpi-temperatura">—</p>
+                  <footer class="kpi-card__footer">
+                    <span class="status-badge status-badge--neutral badge" data-turbinas="kpi-temperatura-status">—</span>
+                  </footer>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <!-- Cadastro: o botão abre o modal #modal-turbina -->
+        <section class="dashboard__section" aria-labelledby="cadastro-title">
+          <div class="turbine-toolbar card">
+            <div class="turbine-toolbar__body card-body">
+              <div class="turbine-toolbar__heading">
+                <h2 class="turbine-toolbar__title" id="cadastro-title">Cadastro de turbinas</h2>
+                <p class="turbine-toolbar__text">Cadastre novas turbinas e ligue ou desligue as da usina.</p>
+              </div>
+              <button class="turbine-toolbar__button button button--primary" type="button" data-bs-toggle="modal" data-bs-target="#modal-turbina" data-turbinas="abrir-modal">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                Nova turbina
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Turbinas (GET /api/turbinas) -->
+        <section class="dashboard__section" aria-labelledby="turbines-title">
+          <h2 class="visually-hidden" id="turbines-title">Turbinas da usina</h2>
+
+          <!-- Os cards vêm do <template id="tpl-turbina-gerenciar"> -->
+          <div class="turbine-grid row row-cols-1 row-cols-lg-2 g-3" data-turbinas="grade"></div>
+
+          <!-- Texto de "carregando" / "nenhuma turbina cadastrada"; some quando há cards -->
+          <p class="turbine-grid__empty" data-turbinas="vazio" role="status">Carregando turbinas…</p>
+        </section>
+
+      </main>
+
+      <!-- Rodapé -->
+      <footer class="app-footer">
+        <p class="app-footer__copy">HidroControl · Usina Hidrelétrica Experimental SENAI</p>
+        <p class="app-footer__info">
+          <span class="app-footer__item">Valores simulados · Protótipo</span>
+        </p>
+      </footer>
+
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL "NOVA TURBINA" (Modal do Bootstrap)
+       Montado com classes do Bootstrap (d-flex, row/col, form-control, btn...);
+       as cores e medidas do design estão no <style> do <head> (escopo #modal-turbina).
+       O envio é interceptado pelo turbinas.js (novalidate: quem valida é o JS,
+       e o back confirma). Campos enviados: nome, modelo (value do radio "modelo")
+       e energiaNominal. O "Estado inicial" não vai no POST (ver cabeçalho).
+       Os atributos data-turbinas e os ids são usados pelo JS: não renomear.
+       ======================================================================== -->
+  <div class="turbine-modal modal fade" id="modal-turbina" tabindex="-1" aria-labelledby="modal-turbina-titulo" aria-describedby="modal-turbina-descricao" aria-hidden="true" data-turbinas="modal">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="turbine-modal__content modal-content border-0 shadow-lg">
+        <form class="turbine-modal__form d-flex flex-column" id="form-turbina" action="#" method="post" novalidate data-turbinas="form">
+
+          <header class="d-flex align-items-start justify-content-between gap-3 mb-3">
+            <span class="turbine-modal__icon d-flex align-items-center justify-content-center flex-shrink-0" aria-hidden="true"><i class="bi bi-lightning-charge"></i></span>
+            <button type="button" class="turbine-modal__close btn-close flex-shrink-0" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          </header>
+
+          <h2 class="turbine-modal__title mb-1" id="modal-turbina-titulo">Nova turbina</h2>
+          <p class="turbine-modal__text text-secondary mb-4" id="modal-turbina-descricao">Dados fixos da turbina. Leituras como temperatura e potência são simuladas depois.</p>
+
+          <div class="turbine-modal__fields d-flex flex-column">
+
+            <!-- Nome (VARCHAR(100) no banco) -->
+            <div>
+              <label class="form-label" for="turbina-nome">Nome</label>
+              <input class="form-control" type="text" id="turbina-nome" name="nome" placeholder="Ex.: Turbina 05" maxlength="100" autocomplete="off" required data-turbinas="campo-nome">
+            </div>
+
+            <!-- Tipo = "modelo" no back. O value é o texto enviado. -->
+            <fieldset>
+              <legend class="form-label">Tipo</legend>
+              <div class="row row-cols-3 g-2">
+                <div class="col">
+                  <input class="choice__input btn-check" type="radio" name="modelo" id="modelo-francis" value="Francis" autocomplete="off" data-turbinas="campo-modelo" checked>
+                  <label class="choice btn d-flex flex-column align-items-center justify-content-center gap-1 w-100" for="modelo-francis">
+                    <i class="choice__icon bi bi-gear" aria-hidden="true"></i>
+                    <span class="choice__label">Francis</span>
+                  </label>
+                </div>
+                <div class="col">
+                  <input class="choice__input btn-check" type="radio" name="modelo" id="modelo-kaplan" value="Kaplan" autocomplete="off" data-turbinas="campo-modelo">
+                  <label class="choice btn d-flex flex-column align-items-center justify-content-center gap-1 w-100" for="modelo-kaplan">
+                    <i class="choice__icon bi bi-fan" aria-hidden="true"></i>
+                    <span class="choice__label">Kaplan</span>
+                  </label>
+                </div>
+                <div class="col">
+                  <input class="choice__input btn-check" type="radio" name="modelo" id="modelo-pelton" value="Pelton" autocomplete="off" data-turbinas="campo-modelo">
+                  <label class="choice btn d-flex flex-column align-items-center justify-content-center gap-1 w-100" for="modelo-pelton">
+                    <i class="choice__icon bi bi-droplet" aria-hidden="true"></i>
+                    <span class="choice__label">Pelton</span>
+                  </label>
+                </div>
+              </div>
+            </fieldset>
+
+            <!-- Potência nominal (inteiro maior que zero, em MW) = energiaNominal no back -->
+            <div>
+              <label class="form-label" for="turbina-potencia">Potência nominal</label>
+              <div class="position-relative">
+                <input class="form-control pe-5" type="number" id="turbina-potencia" name="energiaNominal" placeholder="Ex.: 25" min="1" step="1" inputmode="numeric" aria-describedby="turbina-potencia-ajuda" required data-turbinas="campo-potencia">
+                <span class="turbine-modal__unit position-absolute top-50 end-0 translate-middle-y me-3 text-secondary pe-none" aria-hidden="true">MW</span>
+              </div>
+              <p class="turbine-modal__hint" id="turbina-potencia-ajuda">Capacidade máxima desta turbina, usada no total da usina.</p>
+            </div>
+
+            <!-- Estado inicial: o back cadastra desligada; "Operando" gera um PATCH depois -->
+            <fieldset>
+              <legend class="form-label">Estado inicial</legend>
+              <div class="row row-cols-2 g-2">
+                <div class="col">
+                  <input class="choice__input btn-check" type="radio" name="estado" id="estado-operando" value="operando" autocomplete="off" aria-describedby="turbina-estado-ajuda" data-turbinas="campo-estado">
+                  <label class="choice choice--inline btn d-flex align-items-center justify-content-start gap-2 w-100" for="estado-operando">
+                    <span class="choice__dot" aria-hidden="true"></span>
+                    <span class="choice__label">Operando</span>
+                  </label>
+                </div>
+                <div class="col">
+                  <input class="choice__input btn-check" type="radio" name="estado" id="estado-desligada" value="desligada" autocomplete="off" aria-describedby="turbina-estado-ajuda" data-turbinas="campo-estado" checked>
+                  <label class="choice choice--inline btn d-flex align-items-center justify-content-start gap-2 w-100" for="estado-desligada">
+                    <span class="choice__dot" aria-hidden="true"></span>
+                    <span class="choice__label">Desligada</span>
+                  </label>
+                </div>
+              </div>
+              <p class="turbine-modal__hint" id="turbina-estado-ajuda">Você pode ligar a turbina depois, direto na listagem.</p>
+            </fieldset>
+
+            <!-- Erro de validação / mensagem do back (preenchida pelo turbinas.js) -->
+            <p class="alert alert-danger py-2 px-3 mb-0 small" role="alert" hidden data-turbinas="modal-erro"></p>
+
+          </div>
+
+          <footer class="turbine-modal__footer d-flex flex-column-reverse flex-sm-row justify-content-sm-end gap-2 mt-4 pt-3 border-top">
+            <button class="turbine-modal__cancel btn" type="button" data-bs-dismiss="modal">Cancelar</button>
+            <button class="turbine-modal__submit btn d-inline-flex align-items-center justify-content-center gap-2" type="submit" data-turbinas="modal-enviar">
+              <i class="bi bi-plus-lg" aria-hidden="true"></i>
+              <span data-turbinas="modal-enviar-texto">Cadastrar turbina</span>
+            </button>
+          </footer>
+
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODELOS (<template>)
+       O JS clona o modelo (template.content.cloneNode(true)), preenche os
+       campos data-turbinas com textContent e adiciona na grade.
+       ======================================================================== -->
+
+  <!-- Card de turbina da tela de gerenciamento. Reaproveita as classes do card
+       do dashboard; muda a barra (aqui é a potência gerada em relação à nominal)
+       e ganha o bloco de dados e o botão Ligar/Desligar. Variantes que o JS troca:
+         card:   turbine-card--running | --warning | --critical | --offline
+         barra:  turbine-card__progress-bar--success | --warning | --danger | --neutral
+         selo:   status-badge--success | --warning | --danger | --neutral  (estadoVisualTurbina)
+         temp.:  turbine-card__temp--warning | --danger
+       Botão: texto "Desligar" (turbina ligada) ou "Ligar" (desligada). -->
+  <template id="tpl-turbina-gerenciar">
+    <div class="col">
+      <article class="turbine-card turbine-card--offline card" data-turbinas="turbina-card">
+        <div class="turbine-card__body card-body">
+          <header class="turbine-card__header">
+            <div class="turbine-card__heading">
+              <h3 class="turbine-card__name" data-turbinas="turbina-nome"></h3>
+              <!-- Ex.: "Francis · nominal 25 MW" -->
+              <p class="turbine-card__meta" data-turbinas="turbina-meta"></p>
+            </div>
+            <span class="status-badge status-badge--neutral badge" data-turbinas="turbina-selo"></span>
+          </header>
+
+          <!-- A barra mostra a potência gerada (0 a 100% da nominal) -->
+          <div class="turbine-card__progress progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" data-turbinas="turbina-progresso">
+            <div class="turbine-card__progress-bar turbine-card__progress-bar--neutral progress-bar" style="width: 0%" data-turbinas="turbina-barra"></div>
+          </div>
+
+          <dl class="turbine-card__stats">
+            <div class="turbine-card__stat">
+              <dt class="turbine-card__stat-label">Estado</dt>
+              <dd class="turbine-card__stat-value" data-turbinas="turbina-estado"></dd>
+            </div>
+            <div class="turbine-card__stat">
+              <dt class="turbine-card__stat-label">Potência</dt>
+              <dd class="turbine-card__stat-value" data-turbinas="turbina-potencia"></dd>
+            </div>
+            <div class="turbine-card__stat">
+              <dt class="turbine-card__stat-label">Temperatura</dt>
+              <dd class="turbine-card__stat-value turbine-card__temp" data-turbinas="turbina-temperatura"></dd>
+            </div>
+          </dl>
+
+          <footer class="turbine-card__actions">
+            <button class="turbine-card__action btn btn-sm" type="button" data-turbinas="turbina-alternar">
+              <i class="bi bi-power" aria-hidden="true"></i>
+              <span data-turbinas="turbina-alternar-texto">Desligar</span>
+            </button>
+          </footer>
+        </div>
+      </article>
+    </div>
+  </template>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Módulo da página: monta o layout, assina o monitor e desenha a tela -->
+  <script type="module" src="../js/turbinas.js"></script>
+</body>
+</html>

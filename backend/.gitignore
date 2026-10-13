@@ -1,0 +1,16 @@
+# Credenciais e configurações locais
+.env
+
+# Dependências instaladas pelo Composer
+/vendor/
+
+# Arquivos do editor
+.vscode/
+.idea/
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

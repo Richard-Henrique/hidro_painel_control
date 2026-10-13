@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<!--
+  =====================================================================
+  alertas.html — Tela de alertas (HTML pronto para receber dados via JS)
+
+  Mesma moldura do dashboard.html (sidebar e topbar, atributos data-layout,
+  preenchidos pelo layout.js). Nenhum valor de alerta está escrito aqui:
+  tudo que vem do back é preenchido pelo alertas.js (com textContent,
+  nunca innerHTML).
+
+  Atributos data-alertas="..." = elementos exclusivos desta tela.
+
+  Fontes de dados (GET /api/alertas, via estado do monitor.js):
+    cards    -> estado.alertas.resumo   { total, ativos, atencao, critico }
+    lista    -> estado.alertas.lista    (já com "data" e "ativo")
+  O filtro Todos / Atenção / Crítico é feito na tela (o back devolve o
+  histórico completo): o value de cada opção é o filtro da API
+  (todos | atencao | critico).
+
+  Variantes trocadas pelo JS:
+    status-badge--success | --warning | --danger | --neutral
+    alert-item--warning | --danger | --normal   (+ alert-item--resolved)
+  Estilos novos desta tela: css/alertas.css (importar no style.css).
+
+  Local: frontend/pages/alertas.html
+  =====================================================================
+-->
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alertas | HidroControl</title>
+
+  <!-- Bootstrap + Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- Estilos do projeto (carregados depois do Bootstrap para sobrescrevê-lo).
+       O style.css já importa o dashboard.css (moldura e componentes comuns);
+       o alertas.css (a importar no style.css) traz só o que é desta tela. -->
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body class="page page--alertas">
+
+  <a class="skip-link visually-hidden-focusable" href="#main">Ir para o conteúdo</a>
+
+  <div class="app">
+
+    <!-- ======================================================================
+         SIDEBAR (Bootstrap Offcanvas responsivo)
+         ====================================================================== -->
+    <aside class="sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebar" aria-labelledby="sidebar-brand">
+
+      <div class="sidebar__header">
+        <a class="sidebar__brand" href="dashboard.html" id="sidebar-brand">
+          <span class="sidebar__brand-icon" aria-hidden="true"><i class="bi bi-droplet"></i></span>
+          <span class="sidebar__brand-text">HidroControl</span>
+        </a>
+        <button type="button" class="sidebar__close btn-close btn-close-white d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Fechar menu"></button>
+      </div>
+
+      <div class="sidebar__body">
+        <nav class="sidebar__nav" aria-label="Navegação principal">
+          <ul class="sidebar__list nav nav-pills flex-column">
+            <li class="sidebar__item nav-item">
+              <a class="sidebar__link nav-link" href="dashboard.html">
+                <i class="sidebar__icon bi bi-grid-1x2" aria-hidden="true"></i>
+                <span class="sidebar__label">Dashboard</span>
+              </a>
+            </li>
+            <li class="sidebar__item nav-item">
+              <a class="sidebar__link nav-link" href="turbinas.html">
+                <i class="sidebar__icon bi bi-lightning-charge" aria-hidden="true"></i>
+                <span class="sidebar__label">Turbinas</span>
+                <!-- Quantidade de turbinas (layout.js) -->
+                <span class="sidebar__badge badge" data-layout="badge-turbinas" hidden></span>
+              </a>
+            </li>
+            <li class="sidebar__item nav-item">
+              <a class="sidebar__link nav-link active" href="alertas.html" aria-current="page">
+                <i class="sidebar__icon bi bi-bell" aria-hidden="true"></i>
+                <span class="sidebar__label">Alertas</span>
+                <!-- Alertas ativos (layout.js); some quando são 0 -->
+                <span class="sidebar__badge sidebar__badge--warning badge" data-layout="badge-alertas" hidden></span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
+      <div class="sidebar__footer">
+        <!-- Conexão com o back (layout.js): "Conectando...", "SCADA Online" ou "SCADA Offline" -->
+        <p class="sidebar__status">
+          <span class="status-dot status-dot--neutral" data-layout="status-ponto" aria-hidden="true"></span>
+          <span class="sidebar__status-text" data-layout="status-texto">Conectando...</span>
+        </p>
+      </div>
+
+    </aside>
+
+    <!-- ======================================================================
+         CONTEÚDO
+         ====================================================================== -->
+    <div class="app__content">
+
+      <!-- Topbar -->
+      <header class="topbar">
+        <div class="topbar__heading">
+          <button class="topbar__menu-btn btn d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-controls="sidebar" aria-label="Abrir menu">
+            <i class="bi bi-list" aria-hidden="true"></i>
+          </button>
+          <div class="topbar__titles">
+            <h1 class="topbar__title">Alertas</h1>
+            <!-- Nome da usina (layout.js) -->
+            <p class="topbar__subtitle" data-layout="usina-nome">—</p>
+          </div>
+        </div>
+
+        <div class="topbar__actions">
+
+
+          <!-- Usuário: iniciais no avatar (layout.js) -->
+          <div class="topbar__user dropdown">
+            <button class="topbar__avatar btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu do usuário" data-layout="avatar">?</button>
+            <ul class="topbar__menu dropdown-menu dropdown-menu-end">
+              <li><a class="topbar__menu-item dropdown-item" href="#" data-layout="sair">Sair</a></li>
+            </ul>
+          </div>
+
+        </div>
+      </header>
+
+      <!-- Principal -->
+      <main class="dashboard" id="main">
+
+        <!-- Cards de resumo (estado.alertas.resumo). Reaproveitam o kpi-card do dashboard. -->
+        <section class="dashboard__section" aria-labelledby="resumo-title">
+          <h2 class="visually-hidden" id="resumo-title">Resumo dos alertas</h2>
+
+          <div class="kpi-grid row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3">
+            <div class="col">
+              <article class="kpi-card card">
+                <div class="kpi-card__body card-body">
+                  <h3 class="kpi-card__label">Total no histórico</h3>
+                  <p class="kpi-card__value" data-alertas="resumo-total">—</p>
+                </div>
+              </article>
+            </div>
+            <div class="col">
+              <article class="kpi-card card">
+                <div class="kpi-card__body card-body">
+                  <h3 class="kpi-card__label">Ativos agora</h3>
+                  <p class="kpi-card__value" data-alertas="resumo-ativos">—</p>
+                </div>
+              </article>
+            </div>
+            <div class="col">
+              <article class="kpi-card card">
+                <div class="kpi-card__body card-body">
+                  <h3 class="kpi-card__label">Atenção</h3>
+                  <p class="kpi-card__value" data-alertas="resumo-atencao">—</p>
+                </div>
+              </article>
+            </div>
+            <div class="col">
+              <article class="kpi-card card">
+                <div class="kpi-card__body card-body">
+                  <h3 class="kpi-card__label">Crítico</h3>
+                  <p class="kpi-card__value" data-alertas="resumo-critico">—</p>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <!-- Histórico de mensagens -->
+        <section class="dashboard__section" aria-labelledby="mensagens-title">
+          <header class="section-header section-header--filters">
+            <div class="section-header__heading">
+              <h2 class="section-header__title" id="mensagens-title">Mensagens de alerta</h2>
+              <p class="section-header__subtitle">Ordenadas da mais recente para a mais antiga.</p>
+            </div>
+
+            <!-- Filtro: reaproveita o range-switch do seletor de janela do dashboard.
+                 O value é o filtro da API; o número entre parênteses vem do resumo. -->
+            <div class="range-switch" role="group" aria-label="Filtrar alertas por severidade">
+              <input class="range-switch__input btn-check" type="radio" name="filtro" id="filtro-todos" value="todos" autocomplete="off" data-alertas="filtro" checked>
+              <label class="range-switch__option btn" for="filtro-todos">Todos (<span data-alertas="filtro-contagem-todos">0</span>)</label>
+
+              <input class="range-switch__input btn-check" type="radio" name="filtro" id="filtro-atencao" value="atencao" autocomplete="off" data-alertas="filtro">
+              <label class="range-switch__option btn" for="filtro-atencao">Atenção (<span data-alertas="filtro-contagem-atencao">0</span>)</label>
+
+              <input class="range-switch__input btn-check" type="radio" name="filtro" id="filtro-critico" value="critico" autocomplete="off" data-alertas="filtro">
+              <label class="range-switch__option btn" for="filtro-critico">Crítico (<span data-alertas="filtro-contagem-critico">0</span>)</label>
+            </div>
+          </header>
+
+          <!-- Os itens vêm do <template id="tpl-alerta"> -->
+          <ul class="alert-list list-unstyled" data-alertas="lista"></ul>
+
+          <!-- Texto de "carregando" / "nenhum alerta"; some quando há itens -->
+          <p class="alert-list__empty" data-alertas="vazio" role="status">Carregando alertas…</p>
+        </section>
+
+      </main>
+
+      <!-- Rodapé -->
+      <footer class="app-footer">
+        <p class="app-footer__copy">HidroControl · Usina Hidrelétrica Experimental SENAI</p>
+        <p class="app-footer__info">
+          <span class="app-footer__item">Valores simulados · Protótipo</span>
+        </p>
+      </footer>
+
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODELOS (<template>)
+       O JS clona o modelo (template.content.cloneNode(true)), preenche os
+       campos data-alertas com textContent e adiciona na lista.
+       ======================================================================== -->
+
+  <!-- Item da lista de alertas. Variantes que o JS troca:
+         item:   alert-item--warning | --danger | --normal   (+ alert-item--resolved quando não está ativo)
+         selo:   status-badge--success | --warning | --danger | --neutral  (varianteDoStatus)
+         ícone:  bi-exclamation-triangle (Atenção) | bi-x-octagon (Crítico) | bi-check-circle (Normal)
+       Título = mensagem do alerta; origem = "Turbina 02" ou "Reservatório". -->
+  <template id="tpl-alerta">
+    <li class="alert-item alert-item--warning" data-alertas="alerta-item">
+      <span class="alert-item__icon" aria-hidden="true"><i class="bi bi-exclamation-triangle" data-alertas="alerta-icone"></i></span>
+      <div class="alert-item__content">
+        <p class="alert-item__title" data-alertas="alerta-titulo"></p>
+        <p class="alert-item__origin" data-alertas="alerta-origem"></p>
+      </div>
+      <div class="alert-item__side">
+        <span class="status-badge status-badge--warning badge" data-alertas="alerta-selo"></span>
+        <!-- Ex.: "há 5 segundos · Ativo" ou "ontem, 21:14 · Resolvido" -->
+        <time class="alert-item__meta" data-alertas="alerta-meta"></time>
+      </div>
+    </li>
+  </template>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Módulo da página: monta o layout, assina o monitor e desenha a tela -->
+  <script type="module" src="../js/alertas.js"></script>
+</body>
+</html>
