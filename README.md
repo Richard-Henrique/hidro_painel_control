@@ -220,14 +220,14 @@ Os diagramas ficam na pasta [`diagramas/`](diagramas/).
 
 ### Caso de uso
 
-![Diagrama de caso de uso](diagramas/Caso%20de%20Uso/Hidro%20painel%20Caso%20de%20Uso.png)
+![Diagrama de caso de uso](/diagramas/Caso%20de%20Uso/Hidro%20painel%20Caso%20de%20Uso.png)
 
 ### Arquitetura e classes
 
 | Diagrama | Arquivo |
 | --- | --- |
-| Componentes | [`Diagrama de Componentes@1x.png`](diagramas/Componentes/Diagrama%20de%20Componentes@1x.png) |
-| Classes | [`diagrama_classes.png`](diagramas/Classes/diagrama_classes.png) |
+| Componentes | [`Diagrama de Componentes@1x.png`](/diagramas/Componentes/Diagrama%20de%20Componentes@1x.png) |
+| Classes | [`diagrama_classes.png`](/diagramas/Classes/diagrama_classes.png) |
 
 ### Diagramas de sequência
 
