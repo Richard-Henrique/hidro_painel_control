@@ -220,7 +220,9 @@ Os diagramas ficam na pasta [`diagramas/`](diagramas/).
 
 ### Caso de uso
 
-![Diagrama de caso de uso](/diagramas/Caso%20de%20Uso/Hidro%20painel%20Caso%20de%20Uso.png)
+<img href='[diagramas/Caso%20de%20Uso/Hidro%20painel%20Caso%20de%20Uso.png]' alt='Diagrama de caso de uso'>
+
+/diagramas/Caso%20de%20Uso/Hidro%20painel%20Caso%20de%20Uso.png)
 
 ### Arquitetura e classes
 
